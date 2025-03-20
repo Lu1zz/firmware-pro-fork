@@ -1,4 +1,5 @@
 import utime
+import math
 
 from trezor import utils
 from trezor.enums import InputScriptType
@@ -13,6 +14,7 @@ from . import (
     font_GeistRegular20,
     font_GeistRegular30,
     font_GeistSemiBold26,
+    font_GeistRegular26,
     font_GeistSemiBold38,
     font_GeistSemiBold48,
 )
@@ -20,10 +22,12 @@ from .common import FullSizeWindow, lv
 from .components.banner import LEVEL, Banner
 from .components.button import ListItemBtn
 from .components.container import ContainerFlexCol
+from .components.button import ListItemBtn
 from .components.listitem import CardHeader, CardItem, DisplayItem
 from .components.qrcode import QRCode
 from .widgets.style import StyleWrapper
 
+from trezor.enums import InputScriptType
 
 class Address(FullSizeWindow):
     class SHOW_TYPE:
@@ -704,6 +708,499 @@ class TransactionOverview(FullSizeWindow):
             )
 
 
+from trezor.lvglui.scrs.components.banner import TurboBanner
+from trezor import loop
+
+
+class ShowMeter(FullSizeWindow):
+    def __init__(
+        self,
+        title="Turbo Mode",
+        primary_color=lv_colors.ONEKEY_GREEN,
+        icon_path="A:/res/icon-send.png",
+    ):
+        super().__init__(
+            title,
+            None,
+            _(i18n_keys.BUTTON__CONTINUE),
+            _(i18n_keys.BUTTON__REJECT),
+            primary_color=primary_color,
+            icon_path=icon_path,
+        )
+        
+        # Create meter widget
+        self.meter = lv.meter(self.content_area)
+        self.meter.center()
+        self.meter.set_size(250, 250)
+        self.meter.align_to(self.title, lv.ALIGN.OUT_BOTTOM_MID, 0, 40)
+
+        # Remove the circle from the middle
+        self.meter.remove_style(None, lv.PART.INDICATOR)
+
+        # Add scale
+        scale = self.meter.add_scale()
+        # self.meter.set_scale_ticks(scale, 11, 2, 10, lv_colors.LIGHT_GRAY)
+        # self.meter.set_scale_major_ticks(scale, 1, 2, 30, lv_colors.WHITE, 10)
+        self.meter.set_scale_range(scale, 0, 100, 270, 90)
+
+        # Add three arc indicators
+        self.indic1 = self.meter.add_arc(scale, 15, lv_colors.RED, 20)
+        self.indic2 = self.meter.add_arc(scale, 15, lv_colors.GREEN, 35)
+        self.indic3 = self.meter.add_arc(scale, 15, lv_colors.BLUE, 50)
+        # Create animations
+        self._create_animation(self.indic1, 2000, 500)
+        self._create_animation(self.indic2, 1000, 1000)
+        self._create_animation(self.indic3, 1000, 2000)
+
+    def _create_animation(self, indic, time_ms, playback_time_ms):
+        anim = lv.anim_t()
+        anim.init()
+        anim.set_values(0, 100)
+        anim.set_time(time_ms)
+        anim.set_repeat_delay(100)
+        anim.set_playback_delay(100)
+        anim.set_playback_time(playback_time_ms)
+        anim.set_var(indic)
+        anim.set_repeat_count(lv.ANIM_REPEAT.INFINITE)
+        anim.set_custom_exec_cb(lambda a, val: self.meter.set_indicator_end_value(indic, val))
+        lv.anim_t.start(anim)
+
+class ShowCircle(FullSizeWindow):
+    def __init__(
+        self,
+        title="Loading",
+        primary_color=lv_colors.ONEKEY_GREEN,
+        icon_path="A:/res/icon-send.png",
+    ):
+        super().__init__(
+            title,
+            None,
+            _(i18n_keys.BUTTON__CONTINUE),
+            _(i18n_keys.BUTTON__REJECT),
+            primary_color=primary_color,
+            icon_path=icon_path,
+        )
+        
+        # 创建中心圆
+        self.center_circle = lv.obj(self.content_area)
+        self.center_circle.set_size(60, 60)
+        self.center_circle.center()
+        self.center_circle.add_style(
+            StyleWrapper()
+            .radius(30)
+            .bg_color(primary_color)
+            .bg_opa(lv.OPA._40),
+            0
+        )
+        self.center_circle.align_to(self.title, lv.ALIGN.OUT_BOTTOM_MID, 0, 80)
+        
+        # 创建多个弧形
+        self.arcs = []
+        arc_count = 4  # 弧形数量
+        for i in range(arc_count):
+            arc = lv.arc(self.content_area)
+            arc.set_size(40, 40)
+            arc.set_bg_angles(0, 0)  # 移除背景弧
+            arc.set_range(0, 180)    # 设置为半圆
+            arc.set_value(180)       # 显示整个半圆
+            arc.set_rotation(0)      # 初始旋转角度
+            
+            # 设置弧形样式
+            arc.remove_style(None, lv.PART.KNOB)  # 移除旋钮
+            arc.add_style(StyleWrapper().bg_color(lv_colors.RED), lv.PART.INDICATOR)
+            
+            self.arcs.append(arc)
+            
+            # 创建环绕动画
+            self._create_orbit_animation(arc, i * (360 // arc_count))
+            
+    def _create_orbit_animation(self, arc, start_angle):
+        """创建环绕动画
+        
+        Args:
+            arc: 弧形对象
+            start_angle: 初始角度
+        """
+        # 创建轨道动画
+        anim = lv.anim_t()
+        anim.init()
+        anim.set_var(arc)
+        anim.set_values(start_angle, start_angle + 360)  # 完整的圆周运动
+        anim.set_time(2000)  # 2秒一圈
+        anim.set_repeat_count(lv.ANIM_REPEAT.INFINITE)
+        anim.set_repeat_delay(0)
+        
+        # 自定义动画回调函数
+        def anim_cb(arc, value):
+            # 计算轨道位置
+            radius = 60  # 轨道半径
+            angle = math.radians(value)
+            center_x = self.center_circle.get_x() + self.center_circle.get_width() // 2
+            center_y = self.center_circle.get_y() + self.center_circle.get_height() // 2
+            
+            x = int(center_x + radius * math.cos(angle) - 20)  # 20是arc宽度的一半
+            y = int(center_y + radius * math.sin(angle) - 20)
+            
+            # 更新位置和旋转
+            arc.set_pos(x, y)
+            arc.set_angle(value + 90)  # 保持弧形朝向中心
+            
+        # 使用 set_exec_cb 而不是 set_custom_exec_cb
+        anim.set_exec_cb(lambda a, val: anim_cb(arc, val))
+        lv.anim_t.start(anim)
+
+
+class ArcLoader:
+    """圆形进度条加载器类"""
+    def __init__(
+        self,
+        parent,
+        size=(200, 200),
+        pos=(0, 0),
+        align=lv.ALIGN.CENTER,
+        align_to=None,
+        primary_color=lv_colors.ONEKEY_GREEN,
+        arc_width=15,
+        start_angle=270,
+        angle_step=5,
+        arc_length=60,  # 新增：弧形长度
+    ):
+        """初始化加载器
+        
+        Args:
+            parent: 父容器
+            size: (width, height) 元组，默认 (200, 200)
+            pos: (x, y) 元组，相对于对齐点的偏移，默认 (0, 0)
+            align: 对齐方式，默认居中
+            align_to: 对齐参考对象，默认None
+            primary_color: 主弧形颜色
+            arc_width: 弧形宽度，默认15
+            start_angle: 起始角度，默认270（12点钟位置）
+            timer_period: 定时器周期（毫秒），默认20
+            angle_step: 每次更新增加的角度，默认5
+            arc_length: 弧形跨越的角度，默认60
+        """
+        # 创建弧形进度条
+        self.arc = lv.arc(parent)
+        self.arc.set_size(size[0], size[1])
+        if align_to:
+            self.arc.align_to(align_to, align, pos[0], pos[1])
+        else:
+            self.arc.align(align, pos[0], pos[1])
+        
+        # 设置角度
+        self.arc.set_bg_angles(0, 360)
+        self.arc.set_angles(start_angle, start_angle + arc_length)
+        
+        # 移除旋钮
+        self.arc.remove_style(None, lv.PART.KNOB)
+        
+        # 设置主弧形样式
+        style_arc = lv.style_t()
+        style_arc.init()
+        style_arc.set_arc_color(primary_color)
+        style_arc.set_arc_width(arc_width)
+        self.arc.add_style(style_arc, lv.PART.INDICATOR)
+        
+        # 设置背景弧形样式（透明）
+        style_bg = lv.style_t()
+        style_bg.init()
+        style_bg.set_arc_opa(lv.OPA.TRANSP)  # 设置为透明
+        self.arc.add_style(style_bg, lv.PART.MAIN)
+        
+        # 初始化状态
+        self.current_angle = start_angle
+        self.start_angle = start_angle
+        self.angle_step = angle_step
+        self.arc_length = arc_length
+        
+        # 创建定时器
+        self.timer = lv.timer_create(self.arc_loader_cb, timer_period, None)
+        
+    def arc_loader_cb(self, timer):
+        """弧形加载器回调函数"""
+        self.current_angle += self.angle_step
+        
+        # 同时更新开始和结束角度
+        start_angle = self.current_angle
+        end_angle = self.current_angle + self.arc_length
+        
+        self.arc.set_angles(start_angle, end_angle)
+        
+        # 检查是否完成一圈
+        if self.current_angle >= self.start_angle + 360:
+            self.current_angle = self.start_angle
+            
+    def delete(self):
+        """删除加载器及其资源"""
+        if hasattr(self, 'timer'):
+            self.timer._del()
+        if hasattr(self, 'arc'):
+            self.arc.delete()
+
+# class ShowLoader(FullSizeWindow):
+#     def __init__(
+#         self,
+#         title="Loading",
+#         primary_color=lv_colors.ONEKEY_GREEN,
+#         icon_path="A:/res/icon-send.png",
+#     ):
+#         super().__init__(
+#             title,
+#             None,
+#             _(i18n_keys.BUTTON__CONTINUE),
+#             _(i18n_keys.BUTTON__REJECT),
+#             primary_color=primary_color,
+#             icon_path=icon_path,
+#         )
+        
+#         # 创建一个容器来放置所有加载器
+#         loader_container = lv.obj(self.content_area)
+#         loader_container.set_size(240, 240)  # 使用最大加载器的尺寸
+#         loader_container.align_to(self.title, lv.ALIGN.OUT_BOTTOM_MID, 0, 80)
+#         loader_container.set_style_bg_opa(0, 0)  # 设置容器背景透明
+#         loader_container.set_style_border_width(0, 0)  # 移除边框
+#         loader_container.set_style_pad_all(0, 0)  # 移除内边距
+        
+#         # 创建三个不同大小的加载器，都在容器中居中
+#         arc_1 = ArcLoader(
+#             parent=loader_container,
+#             size=(160, 160),
+#             align=lv.ALIGN.CENTER,  # 在容器中居中
+#             primary_color=primary_color,
+#             arc_width=8,
+#             start_angle=270,
+#             angle_step=-3,  # 顺时针旋转
+#             arc_length=90
+#         )
+        
+#         arc_2 = ArcLoader(
+#             parent=loader_container,
+#             size=(160, 160),
+#             align=lv.ALIGN.CENTER,  # 在容器中居中
+#             primary_color=primary_color,
+#             arc_width=8,
+#             start_angle=90,
+#             angle_step=-3,  # 顺时针旋转
+#             arc_length=90
+#         )
+        
+#         arc_3 = ArcLoader(
+#             parent=loader_container,
+#             size=(200, 200),
+#             align=lv.ALIGN.CENTER,  # 在容器中居中
+#             primary_color=primary_color,
+#             arc_width=8,
+#             angle_step=3,  # 顺时针旋转
+#             arc_length=270
+#         )
+
+#         arc_4 = ArcLoader(
+#             parent=loader_container,
+#             size=(240, 240),
+#             align=lv.ALIGN.CENTER,  # 在容器中居中
+#             primary_color=primary_color,
+#             arc_width=8,
+#             start_angle=270,
+#             angle_step=4,
+#             arc_length=90
+#         )
+        
+#         # 保存加载器引用以便后续清理
+#         self.loaders = [arc_1, arc_2, arc_3, arc_4]
+        
+#     def destroy(self, delay=0):
+#         """销毁窗口时清理所有加载器"""
+#         if hasattr(self, 'loaders'):
+#             for loader in self.loaders:
+#                 loader.delete()
+#         super().destroy(delay)
+
+class ShowSpeed(FullSizeWindow):
+    def __init__(
+        self,
+        title = "I Show Speed",
+        address_from = "0xabcdef",
+        address_to = "0x123456789",
+        amount = "1111",
+        fee_max = "8888",
+        is_eip1559=False,
+        gas_price=None,
+        max_priority_fee_per_gas=None,
+        max_fee_per_gas=None,
+        total_amount=None,
+        primary_color=lv_colors.ONEKEY_GREEN,
+        contract_addr=None,
+        token_id=None,
+        evm_chain_id=None,
+        raw_data=None,
+        sub_icon_path=None,
+        striped=False,
+    ):
+        super().__init__(
+            title="Turbo Mode",
+            subtitle=None,
+            # _(i18n_keys.BUTTON__CONTINUE),
+            # cancel_text=_(i18n_keys.BUTTON__REJECT),
+            primary_color=primary_color,
+        )
+        
+        # self.title.align_to(self, lv.ALIGN.TOP_MID, 0, 44)
+
+        # 添加背景图片
+        self.content_area.set_size(lv.pct(100), lv.pct(100))
+        self.content_area.set_style_max_height(800, 0)
+        self.content_area.align(lv.ALIGN.TOP_MID, 0, 0)  # 将y轴偏移改为0
+        self.bg_img = lv.img(self.content_area)
+        self.bg_img.set_src("A:/assets/wallpaper-0.jpg")
+        # self.bg_img.set_src("A:/assets/linebg.jpg")
+        self.bg_img.align(lv.ALIGN.CENTER, 0, 0)
+        self.bg_img.add_flag(lv.obj.FLAG.FLOATING)  # 让背景浮动，不影响其他元素布局
+        # self.bg_img.move_background()
+        
+        self.title.move_foreground()
+
+        self.primary_color = primary_color
+        self.container = ContainerFlexCol(self.content_area, self.title, pos=(0, 40))
+        
+        # Create fixed container for banner
+        self.banner_container = lv.obj(self.container)
+        self.banner_container.set_size(456, 200)
+        self.banner_container.set_style_bg_opa(0, 0)
+        self.banner_container.set_style_border_width(0, 0)
+        self.banner_container.set_style_pad_all(0, 0)
+        self.banner_container.align(lv.ALIGN.TOP_MID, 0, 100)
+        
+        # Store all parameters to display with their levels
+        self.params = [
+            ("Send", f"Send {amount} To\n{address_to}", "A:/res/group-icon-directions.png"),
+            ("From", address_from, "A:/res/group-icon-wallet.png"),
+            ("Maximum Fee", fee_max, "A:/res/group-icon-fees.png"),
+            # ("Gas price", gas_price, "A:/res/group-icon-fees.png"),
+            ("Priority Fee Per Gas", max_priority_fee_per_gas, "A:/res/group-icon-fees.png"),
+            ("Maximum Fee Per Gas", max_fee_per_gas, "A:/res/group-icon-fees.png"),
+            ("Total amount", total_amount, "A:/res/group-icon-fees.png"),
+            ("Data", "0x07bc1c4f3268fc74b60587e9bb7e01e38a7d8a9a3f51202bf25332aa2c75c64487e9bb7…", "A:/res/group-icon-more.png"),
+        ]
+        
+        # Create initial banner inside the container
+        self.info_banner = TurboBanner(
+            parent=self.banner_container,
+            level=LEVEL.DEFAULT,
+            text=self.params[0][1],
+            icon_path=self.params[0][2],
+            fade_in=True
+        )
+        self.info_banner.align(lv.ALIGN.TOP_MID, 0, 50)
+        
+        self.current_param_index = 0
+        
+        # Add boost button
+        self.hold_btn = NormalButton(self.container, "B O O S T")
+        self.hold_btn.set_size(250, 250)
+        self.hold_btn.align(lv.ALIGN.TOP_MID, 0, 370)
+        self.hold_btn.add_style(
+            StyleWrapper()
+            .bg_color(lv_colors.ONEKEY_TMP)
+            .radius(200)
+            .text_font(font_GeistSemiBold38),
+            # .bg_opa(lv.OPA._90),
+            0
+            )
+        
+        
+        self.cancel_btn = NormalButton(self.content_area, "Stop")
+        self.cancel_btn.set_size(150, 60)
+        # self.cancel_btn.align_to(self.hold_btn, lv.ALIGN.OUT_BOTTOM_MID, 0, 200)
+        self.cancel_btn.align(lv.ALIGN.TOP_MID, 0, 650)
+
+        self.cancel_btn.add_style(
+            StyleWrapper()
+            .bg_color(lv_colors.GRAY_1)
+            .radius(20)
+            .bg_opa(lv.OPA._90)
+            .text_font(font_GeistRegular26),
+            0
+        )
+        self.cancel_btn.move_foreground()
+
+        self.cancel_btn.add_event_cb(self.on_cancel_btn_event, lv.EVENT.CLICKED, None)
+        # Initialize timer related variables
+        self.hold_timer = None
+        self.is_holding = False
+
+        # Add long press events
+        self.hold_btn.add_event_cb(self.on_hold_btn_event, lv.EVENT.CLICKED, None)
+        self.hold_btn.add_event_cb(self.on_hold_btn_event, lv.EVENT.LONG_PRESSED, None)
+        self.hold_btn.add_event_cb(self.on_hold_btn_event, lv.EVENT.LONG_PRESSED_REPEAT, None)
+        self.hold_btn.add_event_cb(self.on_hold_btn_event, lv.EVENT.RELEASED, None)
+
+        # self.bg_img.move_background()
+
+    def update_info_display(self, fade_in=False, fade_out=False):
+        """Update displayed parameter"""
+        # print("fade_in 1", fade_in)
+
+        title, value, path = self.params[self.current_param_index]
+        
+        # Delete old banner
+        if hasattr(self, 'info_banner'):
+            self.info_banner.delete(fade_out=fade_out)
+            
+        # Create new banner in the fixed container
+        self.info_banner = TurboBanner(
+            parent=self.banner_container,
+            level=LEVEL.DEFAULT,
+            text=f"{title}: {value}" if title!="Send" else value,
+            icon_path=path,
+            fade_in=fade_in
+        )
+        self.info_banner.align(lv.ALIGN.TOP_MID, 0, 50)
+
+    def show_next_param(self, fade_in=False, fade_out=False):
+        """Show next parameter"""
+        # print("fade_in 0", fade_in)
+        self.current_param_index += 1
+        
+        # if self.current_param_index >= len(self.params):
+        #     if hasattr(self, "btn_yes"):
+        #         lv.event_send(self.btn_yes, lv.EVENT.CLICKED, None)
+        #     return
+        if self.current_param_index >= len(self.params):
+            self.show_unload_anim()
+            self.channel.publish(1)
+            return
+            
+        self.update_info_display(fade_in=fade_in, fade_out=fade_out)
+
+    def on_cancel_btn_event(self, event):
+        code = event.code
+        if code == lv.EVENT.CLICKED:
+            self.show_unload_anim()
+            self.channel.publish(1)
+            return
+
+    def on_hold_btn_event(self, event):
+        code = event.code
+        current_time = utime.ticks_ms()
+        print("\n")
+        if code == lv.EVENT.CLICKED:
+            print("clicked")
+            self.show_next_param(fade_in=True, fade_out=True)
+        elif code == lv.EVENT.LONG_PRESSED:
+            print("long pressed")
+            self.is_holding = True
+            self.show_next_param(fade_in=False, fade_out=False)
+            self.last_update_time = current_time
+        elif code == lv.EVENT.LONG_PRESSED_REPEAT:
+            print("long pressed repeat")
+            # 检查是否达到最小时间间隔
+            if utime.ticks_diff(current_time, self.last_update_time) >= 300:
+                self.show_next_param(fade_in=False, fade_out=False)
+                self.last_update_time = current_time
+        elif code == lv.EVENT.RELEASED:
+            self.is_holding = False
+
 class TransactionDetailsETH(FullSizeWindow):
     def __init__(
         self,
@@ -781,6 +1278,7 @@ class TransactionDetailsETH(FullSizeWindow):
         self.item_group_body_fee_max = DisplayItem(
             self.group_fees,
             _(i18n_keys.LIST_KEY__MAXIMUM_FEE__COLON),
+
             fee_max,
         )
         if not is_eip1559:
@@ -790,7 +1288,8 @@ class TransactionDetailsETH(FullSizeWindow):
                     _(i18n_keys.LIST_KEY__GAS_PRICE__COLON),
                     gas_price,
                 )
-        else:
+        else:  
+
             self.item_group_body_priority_fee_per_gas = DisplayItem(
                 self.group_fees,
                 _(i18n_keys.LIST_KEY__PRIORITY_FEE_PER_GAS__COLON),
@@ -3823,7 +4322,6 @@ class CosmosSend(FullSizeWindow):
             )
         self.group_more.add_dummy()
 
-
 class CosmosDelegate(FullSizeWindow):
     def __init__(
         self,
@@ -4572,3 +5070,763 @@ class ConnectWalletTutorial(FullSizeWindow):
                     return
                 if target == self.btn_no:
                     self.destroy(10)
+
+import gc
+class LoaderManager:
+    """加载器管理类，用于管理多个加载器共享一个计时器"""
+    def __init__(self, timer_period=30):
+        self.loaders = []
+        self.timer = lv.timer_create(self.update_all_loaders, timer_period, None)
+        
+    def add_loader(self, loader):
+        """添加一个加载器到管理器"""
+        self.loaders.append(loader)
+        
+    def update_all_loaders(self, timer):
+        """更新所有加载器的状态"""
+        # if gc.mem_free() < 200000:
+        #     print("gc.collect()")
+        #     gc.collect()
+        
+        for loader in self.loaders:
+            loader.update()
+            
+    def delete(self):
+        """清理所有资源"""
+        if hasattr(self, 'timer'):
+            self.timer._del()
+        for loader in self.loaders:
+            loader.delete()
+        self.loaders = []
+
+
+# class ArcLoader:
+#     """圆形进度条加载器类"""
+#     def __init__(
+#         self,
+#         parent,
+#         size=(200, 200),
+#         pos=(0, 0),
+#         align=lv.ALIGN.CENTER,
+#         align_to=None,
+#         primary_color=lv_colors.ONEKEY_GREEN,
+#         arc_width=15,
+#         start_angle=270,
+#         angle_step=5,
+#         arc_length=60,
+#     ):
+#         # 创建弧形进度条
+#         self.arc = lv.arc(parent)
+#         self.arc.set_size(size[0], size[1])
+#         if align_to:
+#             self.arc.align_to(align_to, align, pos[0], pos[1])
+#         else:
+#             self.arc.align(align, pos[0], pos[1])
+        
+#         # 设置角度
+#         self.arc.set_bg_angles(0, 360)
+#         self.arc.set_angles(start_angle, start_angle + arc_length)
+        
+#         # 移除旋钮
+#         self.arc.remove_style(None, lv.PART.KNOB)
+        
+#         # 设置主弧形样式
+#         style_arc = lv.style_t()
+#         style_arc.init()
+#         style_arc.set_arc_color(primary_color)
+#         style_arc.set_arc_width(arc_width)
+#         self.arc.add_style(style_arc, lv.PART.INDICATOR)
+        
+#         # 设置背景弧形样式（透明）
+#         style_bg = lv.style_t()
+#         style_bg.init()
+#         style_bg.set_arc_opa(lv.OPA.TRANSP)
+#         self.arc.add_style(style_bg, lv.PART.MAIN)
+        
+#         # 初始化状态
+#         self.current_angle = start_angle
+#         self.start_angle = start_angle
+#         self.angle_step = angle_step
+#         self.arc_length = arc_length
+        
+#     def update(self):
+#         """更新加载器状态"""
+#         self.current_angle += self.angle_step
+        
+#         # 同时更新开始和结束角度
+#         # start_angle = self.current_angle
+#         # end_angle = self.current_angle + self.arc_length
+        
+#         # self.arc.set_angles(start_angle, end_angle)
+#         self.arc.set_rotation(self.current_angle)
+        
+#         # 检查是否完成一圈
+#         if self.current_angle >= 360:
+#             self.current_angle -= 360
+            
+#     def delete(self):
+#         """删除加载器资源"""
+#         if hasattr(self, 'arc'):
+#             self.arc.delete()
+
+
+class ArcLoader:
+    """圆形进度条加载器类"""
+    def __init__(
+        self,
+        parent,
+        size=(200, 200),
+        pos=(0, 0),
+        align=lv.ALIGN.CENTER,
+        align_to=None,
+        primary_color=lv_colors.ONEKEY_GREEN,
+        arc_width=15,
+        arc_length=60,
+        arc_rotation=270,
+        rotation_step=5,
+    ):
+        # 创建弧形进度条
+        self.arc = lv.arc(parent)
+        self.arc.set_size(size[0], size[1])
+        if align_to:
+            self.arc.align_to(align_to, align, pos[0], pos[1])
+        else:
+            self.arc.align(align, pos[0], pos[1])
+        
+        # 设置角度
+        self.arc.set_bg_angles(0, 360)
+        self.arc.set_range(0, 360)
+        self.arc.set_value(arc_length)
+        
+        # 移除旋钮
+        self.arc.remove_style(None, lv.PART.KNOB)
+        
+        # 设置主弧形样式
+        style_arc = lv.style_t()
+        style_arc.init()
+        style_arc.set_arc_color(primary_color)
+        style_arc.set_arc_width(arc_width)
+        self.arc.add_style(style_arc, lv.PART.INDICATOR)
+        
+        # 设置背景弧形样式（透明）
+        style_bg = lv.style_t()
+        style_bg.init()
+        style_bg.set_arc_opa(lv.OPA.TRANSP)
+        self.arc.add_style(style_bg, lv.PART.MAIN)
+        
+        # 初始化状态
+        self.current_rotation = arc_rotation
+        self.rotation_step = rotation_step
+        # self.arc_length = arc_length
+        
+    def update(self):
+        """更新加载器状态"""
+        self.current_rotation += self.rotation_step
+
+        self.arc.set_rotation(self.current_rotation)
+        
+        # 检查是否完成一圈
+        if self.current_rotation >= abs(360):
+            self.current_rotation = 0
+            
+    def delete(self):
+        """删除加载器资源"""
+        if hasattr(self, 'arc'):
+            self.arc.delete()
+
+class ShowLoader(FullSizeWindow):
+    def __init__(
+        self,
+        title="Loading",
+        primary_color=lv_colors.ONEKEY_GREEN,
+        icon_path="A:/res/icon-send.png",
+    ):
+        super().__init__(
+            title,
+            None,
+            _(i18n_keys.BUTTON__CONTINUE),
+            _(i18n_keys.BUTTON__REJECT),
+            primary_color=primary_color,
+            icon_path=icon_path,
+        )
+
+        # 创建容器
+        self.loader_container = lv.obj(self.content_area)
+        self.loader_container.set_size(250, 250)
+        self.loader_container.align_to(self.title, lv.ALIGN.OUT_BOTTOM_MID, 0, 60)
+        self.loader_container.set_style_bg_opa(0, 0)
+        self.loader_container.set_style_border_width(0, 0)
+        self.loader_container.set_style_pad_all(0, 0)
+        self.loader_container.clear_flag(lv.obj.FLAG.CLICKABLE)
+
+        # 创建加载器管理器
+        self.loader_manager = LoaderManager(timer_period=20)
+        
+        # 创建三个不同大小的加载器
+        arc_1 = ArcLoader(
+            parent=self.loader_container,
+            size=(160, 160),
+            align=lv.ALIGN.CENTER,
+            primary_color=primary_color,
+            arc_width=6,
+            arc_length=90,
+            arc_rotation=270,
+            rotation_step=2,  # 顺时针旋转
+        )
+        
+        arc_2 = ArcLoader(
+            parent=self.loader_container,
+            size=(160, 160),
+            align=lv.ALIGN.CENTER,
+            primary_color=primary_color,
+            arc_width=6,
+            arc_length=90,
+            arc_rotation=90,
+            rotation_step=2,  # 顺时针旋转
+        )
+        
+        arc_3 = ArcLoader(
+            parent=self.loader_container,
+            size=(190, 190),
+            align=lv.ALIGN.CENTER,
+            primary_color=primary_color,
+            arc_width=6,
+            arc_length=270,
+            arc_rotation=180,
+            rotation_step=-2,  # 逆时针旋转
+        )
+
+        arc_4 = ArcLoader(
+            parent=self.loader_container,
+            size=(220, 220),
+            align=lv.ALIGN.CENTER,
+            primary_color=primary_color,
+            arc_width=6,
+            arc_length=120,
+            arc_rotation=180,
+            rotation_step=3,  # 逆时针旋转
+        )
+
+        arc_5 = ArcLoader(
+            parent=self.loader_container,
+            size=(250, 250),
+            align=lv.ALIGN.CENTER,
+            primary_color=primary_color,
+            arc_width=6,
+            arc_length=120,
+            arc_rotation=0,
+            rotation_step=-3,  # 逆时针旋转
+        )
+        arc_6 = ArcLoader(
+            parent=self.loader_container,
+            size=(250, 250),
+            align=lv.ALIGN.CENTER,
+            primary_color=primary_color,
+            arc_width=6,
+            arc_length=60,
+            arc_rotation=180,
+            rotation_step=-3,  # 逆时针旋转
+        )
+        # arc_7 = ArcLoader(
+        #     parent=self.loader_container,
+        #     size=(280, 280),
+        #     align=lv.ALIGN.CENTER,
+        #     primary_color=primary_color,
+        #     arc_width=8,
+        #     arc_length=60,
+        #     arc_rotation=240,
+        #     rotation_step=-3,  # 逆时针旋转
+        # )
+        # 将所有加载器添加到管理器
+        for arc in [arc_1, arc_2, arc_3, arc_4, arc_5, arc_6]:
+            self.loader_manager.add_loader(arc)
+
+        
+        self.btn_continue = NormalButton(self.loader_container, _(i18n_keys.BUTTON__CONTINUE))
+        self.btn_continue.set_size(120, 120)
+        self.btn_continue.add_style(
+            StyleWrapper()
+            .text_font(font_GeistRegular26)
+            # .text_color(lv_colors.ONEKEY_WHITE_4)
+            # .bg_color(lv_colors.ONEKEY_GRAY_3)
+            .radius(60)
+            , 0)
+        self.btn_continue.align(lv.ALIGN.CENTER, 0, 0)
+        self.btn_continue.move_foreground()
+        self.btn_continue.add_event_cb(self.on_click, lv.EVENT.CLICKED, None)
+
+        import gc
+        gc.collect()
+
+    def on_click(self, event):
+        code = event.code
+        target = event.get_target()
+        if code == lv.EVENT.CLICKED:
+            if target == self.btn_continue:
+                print("click")
+                motor.vibrate()
+        
+    def destroy(self, delay=0):
+        """销毁窗口时清理加载器管理器"""
+        if hasattr(self, 'loader_manager'):
+            self.loader_manager.delete()
+        super().destroy(delay)
+
+class ShowBar(FullSizeWindow):
+    def __init__(
+        self, 
+        title="Loading", 
+        primary_color=lv_colors.ONEKEY_GREEN,
+        bar_count=5,  # 进度条数量
+        bar_width=20,  # 进度条宽度
+        bar_height=200,  # 进度条高度
+        bar_spacing=10  # 进度条间距
+    ):
+        super().__init__(
+            title,
+            None,
+            _(i18n_keys.BUTTON__CONTINUE),
+            _(i18n_keys.BUTTON__REJECT),
+            primary_color=primary_color,
+        )
+
+        # 创建容器
+        self.container = lv.obj(self.content_area)
+        total_width = bar_count * bar_width + (bar_count - 1) * bar_spacing
+        self.container.set_size(total_width, bar_height + 40)
+        self.container.align_to(self.title, lv.ALIGN.OUT_BOTTOM_MID, 0, 80)
+        self.container.set_style_bg_opa(0, 0)  # 透明背景
+        self.container.set_style_border_width(0, 0)  # 无边框
+        self.container.set_style_pad_all(0, 0)  # 无内边距
+
+        # 创建进度条样式
+        self.style_indic = lv.style_t()
+        self.style_indic.init()
+        self.style_indic.set_bg_opa(lv.OPA.COVER)
+        self.style_indic.set_bg_color(lv_colors.WHITE)
+        self.style_indic.set_bg_grad_color(primary_color)
+        self.style_indic.set_bg_grad_dir(lv.GRAD_DIR.VER)
+        
+        # 创建背景样式
+        self.style_bg = lv.style_t()
+        self.style_bg.init()
+        self.style_bg.set_bg_opa(lv.OPA.COVER)
+        self.style_bg.set_bg_color(lv_colors.ONEKEY_GRAY_3)
+        self.style_bg.set_radius(4)  # 圆角
+
+
+        line_points = [ {"x":5, "y":5},
+                        # {"x":70, "y":70},
+                        # {"x":120, "y":10},
+                        # {"x":180, "y":60},
+                        {"x":240, "y":10}]
+
+        # Create style
+        style_line = lv.style_t()
+        style_line.init()
+        style_line.set_line_width(8)
+        style_line.set_line_color(lv.palette_main(lv.PALETTE.BLUE))
+        style_line.set_line_rounded(True)
+
+        # Create a line and apply the new style
+        line1 = lv.line(self.content_area)
+        line1.set_points(line_points, 2)     # Set the points
+        line1.add_style(style_line, 0)
+        line1.center()
+
+
+        # 创建多个进度条
+        self.bars = []
+        self.anims = []
+        
+        for i in range(bar_count):
+            # 创建进度条并添加到容器
+            bar = lv.bar(self.container)
+            bar.add_style(self.style_bg, lv.PART.MAIN)
+            bar.add_style(self.style_indic, lv.PART.INDICATOR)
+            bar.set_size(bar_width, bar_height)
+            bar.set_pos(i * (bar_width + bar_spacing), 0)
+            bar.set_range(0, 100)
+            
+            # 创建动画
+            a = lv.anim_t()
+            a.init()
+            a.set_var(bar)
+            a.set_values(0, 100)
+            
+            # 设置不同的动画时间和延迟，使动画错开
+            base_time = 500
+            a.set_time(base_time + i * 100)
+            a.set_playback_time(base_time + i * 100)
+            a.set_delay(i * 200)
+            a.set_playback_delay(i * 100)
+            
+            a.set_repeat_count(lv.ANIM_REPEAT.INFINITE)
+            
+            # 使用闭包捕获当前的 bar 值
+            def create_callback(target_bar):
+                return lambda a, val: self.set_bar_value(target_bar, val)
+            
+            a.set_custom_exec_cb(create_callback(bar))
+            
+            lv.anim_t.start(a)
+            
+            self.bars.append(bar)
+            self.anims.append(a)
+
+    def set_bar_value(self, bar, value):
+        """更新进度条值的统一回调函数"""
+        bar.set_value(value, lv.ANIM.ON)
+        
+    def destroy(self, delay_ms=400):
+        """清理资源"""
+        # 停止所有动画
+        for anim in self.anims:
+            if anim:
+                anim._del()
+        self.anims = []
+        return super().destroy(delay_ms)
+    
+class ShowLine(FullSizeWindow):
+    def __init__(
+        self, 
+        title="Turbo Mode", 
+        primary_color=lv_colors.ONEKEY_GREEN,
+        line_count=16,  # 线条数量，建议使用8或12等能均匀分布的数字
+        line_width=6,  # 线条宽度
+        line_length=50,  # 固定线条长度
+        max_distance=200,  # 最大移动距离
+    ):
+        super().__init__(
+            title,
+            None,
+            _(i18n_keys.BUTTON__CONTINUE),
+            _(i18n_keys.BUTTON__REJECT),
+            primary_color=primary_color,
+        )
+                
+        # 添加背景图片
+        self.content_area.set_size(lv.pct(100), lv.pct(100))
+        self.content_area.set_style_max_height(800, 0)
+        self.content_area.align(lv.ALIGN.TOP_MID, 0, 0)  # 将y轴偏移改为0
+        self.bg_img = lv.img(self.content_area)
+        self.bg_img.set_src("A:/res/test-bg.png")
+        # self.bg_img.set_src("A:/assets/linebg.jpg")
+        self.bg_img.align(lv.ALIGN.CENTER, 0, 0)
+        self.bg_img.add_flag(lv.obj.FLAG.FLOATING)  # 让背景浮动，不影响其他元素布局
+        self.bg_img.move_background()
+        # self.bg_img.move_foreground()
+
+        # 导入math模块
+        import math
+        self.math = math
+        
+        # 创建容器
+        self.container = lv.obj(self.content_area)
+        container_size = (max_distance + line_length) * 2 + 20  # 确保容器足够大
+        self.container.set_size(container_size, container_size)
+        self.container.align_to(self.title, lv.ALIGN.OUT_BOTTOM_MID, 0, 100)
+        self.container.set_style_bg_opa(0, 0)  # 透明背景
+        self.container.set_style_border_width(0, 0)  # 无边框
+        self.container.set_style_pad_all(0, 0)  # 无内边距
+        
+        # 创建线条样式
+        self.style_line = lv.style_t()
+        self.style_line.init()
+        self.style_line.set_line_width(line_width)
+        self.style_line.set_line_color(lv_colors.PURPLE)
+        self.style_line.set_line_rounded(True)
+        
+        # 存储线条和动画
+        self.lines = []
+        self.anims = []
+        self.line_points_list = []
+        self.is_destroyed = False
+        self.line_length = line_length
+        
+        # 计算中心点
+        self.center_x = container_size // 2
+        self.center_y = container_size // 2
+        
+        # 创建放射状线条
+        for i in range(line_count):
+            # 计算角度 (均匀分布在360度)
+            angle = i * (360 / line_count)
+            angle_rad = math.radians(angle)
+            
+            # 初始化线条点 (初始位置在中心)
+            line_points = [
+                {"x": self.center_x, "y": self.center_y},  # 起点
+                {"x": self.center_x, "y": self.center_y}   # 终点 (初始与起点相同)
+            ]
+            
+            self.line_points_list.append({
+                "points": line_points,
+                "angle": angle_rad
+            })
+            
+            # 创建线条对象
+            line = lv.line(self.container)
+            line.set_points(line_points, 2)
+            line.add_style(self.style_line, 0)
+            
+            # 创建动画
+            anim = lv.anim_t()
+            anim.init()
+            anim.set_var(line)
+            anim.set_values(0, max_distance)  # 从0到最大距离
+            
+            # 设置不同的动画时间和延迟，使动画错开
+            base_time = 400
+            anim.set_time(base_time)
+            # anim.set_playback_time(base_time)
+            anim.set_delay(i * 747 % 1001)  # 错开延迟
+            
+            anim.set_repeat_count(lv.ANIM_REPEAT.INFINITE)
+            
+            # 使用闭包捕获当前线条索引
+            def create_callback(idx):
+                return lambda a, val: self.update_line_position(idx, val)
+            
+            anim.set_custom_exec_cb(create_callback(i))
+            
+            lv.anim_t.start(anim)
+            
+            self.lines.append(line)
+            self.anims.append(anim)
+
+        self.btn_continue = NormalButton(self.container, _(i18n_keys.BUTTON__CONTINUE))
+        self.btn_continue.set_size(120, 120)
+        self.btn_continue.add_style(
+            StyleWrapper()
+            .text_font(font_GeistRegular26)
+            # .text_color(lv_colors.ONEKEY_WHITE_4)
+            # .bg_color(lv_colors.ONEKEY_GRAY_3)
+            .radius(60)
+            , 0)
+        self.btn_continue.align(lv.ALIGN.CENTER, 0, 0)
+        self.btn_continue.move_foreground()
+        self.btn_continue.add_event_cb(self.on_click, lv.EVENT.CLICKED, None)
+
+        import gc
+        gc.collect()
+
+    def on_click(self, event):
+        code = event.code
+        target = event.get_target()
+        if code == lv.EVENT.CLICKED:
+            if target == self.btn_continue:
+                print("click")
+                motor.vibrate()
+
+    def update_line_position(self, line_idx, distance):
+        """更新指定线条位置的回调函数"""
+        # 检查窗口是否已销毁或索引是否有效
+        if self.is_destroyed or line_idx >= len(self.line_points_list):
+            return
+            
+        try:
+            line_data = self.line_points_list[line_idx]
+            angle = line_data["angle"]
+            
+            # 计算线条起点和终点
+            start_x = self.center_x + int(distance * self.math.cos(angle))
+            start_y = self.center_y + int(distance * self.math.sin(angle))
+            
+            # 计算线条终点 (起点 + 固定长度)
+            end_x = start_x + int(self.line_length * self.math.cos(angle))
+            end_y = start_y + int(self.line_length * self.math.sin(angle))
+            
+            # 更新线条点
+            line_data["points"][0]["x"] = start_x
+            line_data["points"][0]["y"] = start_y
+            line_data["points"][1]["x"] = end_x
+            line_data["points"][1]["y"] = end_y
+            
+            # 更新线条对象的点
+            if line_idx < len(self.lines):
+                self.lines[line_idx].set_points(line_data["points"], 2)
+        except (IndexError, AttributeError):
+            # 捕获任何可能的索引错误或属性错误
+            pass
+    
+    def destroy(self, delay_ms=400):
+        """清理资源"""
+        # 标记窗口为已销毁状态
+        self.is_destroyed = True
+        
+        # 停止所有动画
+        for anim in self.anims:
+            if anim:
+                anim._del()
+        self.anims = []
+        
+        # 清空引用
+        self.lines = []
+        self.line_points_list = []
+        
+        return super().destroy(delay_ms)
+    
+class ShowRipple(FullSizeWindow):
+    def __init__(self):
+        super().__init__(
+            "Turbo Mode",
+            None,
+            # _(i18n_keys.BUTTON__CONTINUE),
+            # _(i18n_keys.BUTTON__REJECT),
+            primary_color=lv_colors.ONEKEY_GREEN,
+        )
+
+        # 添加背景图片
+        self.content_area.set_size(lv.pct(100), lv.pct(100))
+        self.content_area.set_style_max_height(800, 0)
+        self.content_area.align(lv.ALIGN.TOP_MID, 0, 40)  # 将y轴偏移改为0
+        self.bg_img = lv.img(self.content_area)
+        self.bg_img.set_src("A:/res/test-point.png")
+        self.bg_img.align(lv.ALIGN.CENTER, 0, 0)
+        self.bg_img.add_flag(lv.obj.FLAG.FLOATING)  # 让背景浮动，不影响其他元素布局
+        self.bg_img.move_background()
+        # self.bg_img.move_foreground()
+
+        ### static mask #####################################################
+        # circle
+        self.circle = lv.obj(self.content_area)
+        self.circle.set_size(110, 110)  # 直径为300
+        self.circle.align_to(self.bg_img, lv.ALIGN.CENTER, 0, 0)
+        self.circle.set_style_radius(60, 0)  # 设置半径为150
+        self.circle.set_style_bg_color(lv_colors.BLACK, 0)  # 设置背景颜色为黑色
+        self.circle.set_style_border_width(0, 0)  # 无边框
+
+        # mask 1
+        self.mask1 = lv.arc(self.content_area)
+
+        self.mask1.set_size(230, 230)
+        self.mask1.align_to(self.bg_img, lv.ALIGN.CENTER, 0, 0)
+        
+        self.mask1.set_bg_angles(0, 360)
+        self.mask1.set_range(0, 360)
+        self.mask1.set_value(360)
+        self.mask1.remove_style(None, lv.PART.KNOB)
+
+        # mask 2
+        self.mask2 = lv.arc(self.content_area)
+        self.mask2.set_size(340, 340)
+        self.mask2.align_to(self.bg_img, lv.ALIGN.CENTER, 0, 0)
+        
+        self.mask2.set_bg_angles(0, 360)
+        self.mask2.set_range(0, 360)
+        self.mask2.set_value(360)
+        self.mask2.remove_style(None, lv.PART.KNOB)
+
+        # 设置主弧形样式
+        style_mask = lv.style_t()
+        style_mask.init()
+        style_mask.set_arc_color(lv_colors.BLACK)
+        style_mask.set_arc_width(35)
+        self.mask1.add_style(style_mask, lv.PART.INDICATOR)
+        self.mask2.add_style(style_mask, lv.PART.INDICATOR)
+        
+        # 设置背景弧形样式（透明）
+        style_bg = lv.style_t()
+        style_bg.init()
+        style_bg.set_arc_opa(lv.OPA.TRANSP)
+        self.mask1.add_style(style_bg, lv.PART.MAIN)
+        self.mask2.add_style(style_bg, lv.PART.MAIN)
+        ### static mask #####################################################
+
+
+        ### anime mask #####################################################
+        # inner
+        self.anime_mask2 = lv.obj(self.content_area)
+        self.anime_mask2.set_size(120, 120)
+        self.anime_mask2.set_style_radius(180, 0)
+        self.anime_mask2.align_to(self.bg_img, lv.ALIGN.CENTER, 0, 0)
+        self.anime_mask2.set_style_bg_color(lv_colors.BLACK, 0)
+        self.anime_mask2.set_style_border_width(0, 0)
+
+        # outer
+        self.anime_mask1 = lv.arc(self.content_area)
+        self.anime_mask1.set_size(370, 370)
+        self.anime_mask1.align_to(self.bg_img, lv.ALIGN.CENTER, 0, 0)
+        self.anime_mask1.set_bg_angles(0, 360)
+        self.anime_mask1.set_range(0, 360)
+        self.anime_mask1.set_value(360)
+        self.anime_mask1.remove_style(None, lv.PART.KNOB)
+
+        # set style
+        self.style_anime_mask_1 = lv.style_t()
+        self.style_anime_mask_1.init()
+        self.style_anime_mask_1.set_arc_color(lv_colors.BLACK)
+        self.style_anime_mask_1.set_arc_width(170)
+        self.anime_mask1.add_style(self.style_anime_mask_1, lv.PART.INDICATOR)
+
+        self.style_anime_mask_bg_1 = lv.style_t()
+        self.style_anime_mask_bg_1.init()
+        self.style_anime_mask_bg_1.set_arc_opa(lv.OPA.TRANSP)
+        self.anime_mask1.add_style(self.style_anime_mask_bg_1, lv.PART.MAIN)
+
+        ### anime mask #####################################################
+
+
+        ### anime  #####################################################
+        anime = lv.anim_t()
+        anime.init()
+        anime.set_var(self.anime_mask1)
+        anime.set_values(180, 0)
+        anime.set_repeat_count(lv.ANIM_REPEAT.INFINITE)
+        
+        base_time = 1500
+        anime.set_time(base_time)
+        # anime.set_playback_time(base_time)
+        anime.set_delay(500)
+        # anime.set_playback_delay(300)
+        
+        anime.set_repeat_count(lv.ANIM_REPEAT.INFINITE)
+
+        anime.set_custom_exec_cb(lambda a, val: self.update_arc_width(val))
+        lv.anim_t.start(anime)
+
+        ### btn #####################################################
+        self.btn_continue = NormalButton(self.content_area, "SIGN")
+        self.btn_continue.set_size(120, 120)
+        self.btn_continue.add_style(
+            StyleWrapper()
+            # .text_font(font_GeistRegular26)
+            # .text_color(lv_colors.ONEKEY_WHITE_4)
+            .bg_color(lv_colors.ONEKEY_GRAY_4)
+            .radius(75)
+            , 0)
+        self.btn_continue.align(lv.ALIGN.CENTER, 0, 0)
+        self.btn_continue.move_foreground()
+        
+        # 创建按钮大小变化的动画
+        btn_anim = lv.anim_t()
+        btn_anim.init()
+        btn_anim.set_var(self.btn_continue)
+        btn_anim.set_time(200)  # 动画持续时间(ms)
+        btn_anim.set_values(120, 150)  # 从120px到140px
+        btn_anim.set_repeat_count(lv.ANIM_REPEAT.INFINITE)
+        btn_anim.set_playback_time(200)  # 回放动画时间(ms)
+        btn_anim.set_repeat_delay(1450)
+        # btn_anim.set_playback_delay(50)  # 回放前的短暂停留(ms)
+        btn_anim.set_path_cb(lv.anim_t.path_overshoot)  # 使用overshoot路径效果
+        
+        # 设置大小变化的回调函数
+
+        btn_anim.set_custom_exec_cb(lambda a, val: self.size_cb(self.btn_continue, val))
+        lv.anim_t.start(btn_anim)
+
+    def size_cb(self, btn, value):
+        btn.set_size(value, value)
+        btn.align(lv.ALIGN.CENTER, 0, 0)  # 保持居中
+        
+
+    def update_arc_width(self, val):
+        self.anime_mask2.set_size(360-2*val - 20, 360-2*val - 20)
+        self.anime_mask2.set_style_radius(180-val-10, 0)
+        self.anime_mask2.align_to(self.bg_img, lv.ALIGN.CENTER, 0, 0)
+        self.anime_mask2.invalidate()
+
+        self.style_anime_mask_1.set_arc_width(val)
+        self.anime_mask1.invalidate()
+        ### anime  #####################################################

@@ -47,7 +47,8 @@ class Title(lv.label):
                 align_base, lv.ALIGN.OUT_BOTTOM_MID, relative_pos[0], relative_pos[1]
             )
         else:
-            self.align(lv.ALIGN.TOP_LEFT, 12, pos_y)
+            # self.align(lv.ALIGN.TOP_LEFT, 12, pos_y)
+            self.align(lv.ALIGN.TOP_MID, 0, 56)
         self.add_style(
             StyleWrapper()
             .text_font(font_GeistSemiBold64)

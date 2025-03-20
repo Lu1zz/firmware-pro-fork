@@ -84,15 +84,15 @@ async def sign_tx_eip1559(
         if res is not None:
             is_nft_transfer = True
             from_addr, recipient, token_id, value = res
-    show_details = await require_show_overview(
-        ctx,
-        recipient,
-        value,
-        msg.chain_id,
-        token,
-        is_nft_transfer,
-    )
-    if show_details:
+    # show_details = await require_show_overview(
+    #     ctx,
+    #     recipient,
+    #     value,
+    #     msg.chain_id,
+    #     token,
+    #     is_nft_transfer,
+    # )
+    if True:
         has_raw_data = False
         if token is None and token_id is None and msg.data_length > 0:
             has_raw_data = True
