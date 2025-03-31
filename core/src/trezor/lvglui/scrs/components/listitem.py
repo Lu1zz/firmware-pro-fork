@@ -366,3 +366,87 @@ class DisplayItemWithFont_TextPairs(DisplayItemWithTextPairs):
         font=font_GeistRegular30,
     ):
         super().__init__(parent, title, content_pairs, bg_color, radius, font)
+
+
+class ShortInfoItem(lv.obj):
+    """
+    Information display component with rounded rectangle, circular image on left, and two text labels.
+    Main container: 394x64 rectangle with 32px radius
+    Left side: Circular image with 32px radius, aligned with left edge
+    Middle: Two text labels stacked vertically, with smaller font for bottom label
+    """
+    def __init__(
+        self,
+        parent,
+        img_src,
+        title_text,
+        subtitle_text,
+        bg_color=lv_colors.ONEKEY_BLACK_4,
+        border_color=lv_colors.ONEKEY_WHITE_4,
+        title_color=lv_colors.WHITE,
+        subtitle_color=lv_colors.ONEKEY_GRAY_4,
+    ):
+        super().__init__(parent)
+        self.remove_style_all()
+        
+        # Main container setup
+        self.set_size(400, 70)
+        self.add_style(
+            StyleWrapper()
+            .bg_color(bg_color)
+            .bg_opa(lv.OPA._60)
+            .radius(40)
+            .border_width(2)
+            .border_color(border_color)
+            .border_opa(lv.OPA._30),
+            0
+        )
+        
+        # Left circular image
+        self.img = lv.img(self)
+        self.img.set_src(img_src)
+        self.img.set_size(70, 70)
+        self.img.align(lv.ALIGN.LEFT_MID, 0, 0)
+        self.img.set_style_radius(35, 0)  # 半径应为尺寸的一半
+        self.img.set_style_clip_corner(True, 0)
+        
+        # Title text (upper label)
+        self.title = lv.label(self)
+        self.title.set_text(title_text)
+        self.title.set_long_mode(lv.label.LONG.DOT)
+        self.title.set_width(320)  # 增加宽度以适应更多文本
+        self.title.add_style(
+            StyleWrapper()
+            .text_color(title_color)
+            .text_font(font_GeistRegular26)
+            .text_letter_space(-1),
+            0
+        )
+        self.title.align_to(self.img, lv.ALIGN.OUT_RIGHT_MID, 16, -12)  # 调整垂直位置
+        
+        # Subtitle text (lower label with smaller font)
+        self.subtitle = lv.label(self)
+        self.subtitle.set_text(subtitle_text)
+        self.subtitle.set_long_mode(lv.label.LONG.DOT)
+        self.subtitle.set_width(320)  # 增加宽度以适应更多文本
+        self.subtitle.add_style(
+            StyleWrapper()
+            .text_color(subtitle_color)
+            .text_font(font_GeistRegular20)
+            .text_letter_space(-1),
+            0
+        )
+        self.subtitle.align_to(self.title, lv.ALIGN.OUT_BOTTOM_LEFT, 0, 4)
+        
+        # Make the entire component clickable
+        self.add_flag(lv.obj.FLAG.CLICKABLE)
+        
+    def set_title(self, text):
+        self.title.set_text(text)
+        
+    def set_subtitle(self, text):
+        self.subtitle.set_text(text)
+        
+    def set_img_src(self, src):
+        self.img.set_src(src)
+

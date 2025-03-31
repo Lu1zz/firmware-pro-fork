@@ -3,8 +3,9 @@ from typing import Sequence
 from trezor import wire
 from trezor.enums import ButtonRequestType
 from trezor.lvglui.i18n import gettext as _, keys as i18n_keys
+from trezor.lvglui.scrs.template import ShowSpeed, Turbo
 from trezor.strings import strip_amount
-from trezor.lvglui.scrs.template import ShowSpeed, ShowMeter, ShowCircle, ShowLoader, ShowBar, ShowLine, ShowRipple
+
 from .common import interact, raise_if_cancelled
 
 
@@ -24,7 +25,7 @@ async def confirm_total_ethereum(
     from trezor.lvglui.scrs.template import TransactionDetailsETH
 
     short_amount, striped = strip_amount(amount)
-    screen = ShowMeter()
+    screen = Turbo()
     # screen = ShowSpeed()
     # screen = TransactionDetailsETH(
     #     _(i18n_keys.TITLE__SEND_MULTILINE).format(short_amount),
@@ -64,7 +65,8 @@ async def confirm_total_ethereum_eip1559(
     from trezor.lvglui.scrs.template import TransactionDetailsETH
 
     short_amount, striped = strip_amount(amount)
-    screen = ShowRipple()
+    screen = Turbo()
+    # screen = ShowRipple()
     # screen = ShowLine()
     # screen = ShowBar()
     # screen = ShowLoader()
