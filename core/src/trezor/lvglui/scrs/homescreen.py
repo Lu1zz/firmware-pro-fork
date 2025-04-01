@@ -5081,8 +5081,8 @@ class TurboModeScreen(Screen):
         self.turbo_mode.add_style(
             StyleWrapper().bg_color(lv_colors.ONEKEY_BLACK_3).bg_opa(lv.OPA.COVER), 0
         )
-        print("# device.is_animation_enabled()", device.is_animation_enabled())
-        if not device.is_animation_enabled(): #TBD
+        print("# device.is_turbomode_enabled()", device.is_turbomode_enabled())
+        if not device.is_turbomode_enabled(): #TBD
             self.turbo_mode.clear_state()
 
         self.tips = lv.label(self.content_area)
@@ -5108,14 +5108,14 @@ class TurboModeScreen(Screen):
         target = event_obj.get_target()
         if code == lv.EVENT.VALUE_CHANGED:
             if target == self.turbo_mode.switch:
-                if not device.is_animation_enabled():
+                if not device.is_turbomode_enabled():
                     print("# 1")
                     TurboModeConfirm(self, True)
                     self.turbo_mode.add_state()
                 else:
                     print("# 2")
                     self.turbo_mode.clear_state()
-                    device.set_animation_enable(False)
+                    device.set_turbomode_enable(False)
                     print("set animation enable", False)
 
 
@@ -5144,6 +5144,9 @@ class TurboModeConfirm(FullSizeWindow):
             self.enable = enable
             self.callback_obj = callback_obj
 
+        self.slider_enable(False)
+        self.container.add_event_cb(self.on_value_changed, lv.EVENT.VALUE_CHANGED, None)
+
     def eventhandler(self, event_obj):
         code = event_obj.code
         target = event_obj.get_target()
@@ -5156,10 +5159,29 @@ class TurboModeConfirm(FullSizeWindow):
                 self.destroy(200)
         elif code == lv.EVENT.READY and self.hold_confirm:
             if target == self.slider:
-                device.set_animation_enable(self.enable)
+                device.set_turbomode_enable(self.enable)
                 print("set animation enable", self.enable)
                 self.destroy(200)
 
+    def on_value_changed(self, event_obj):
+        code = event_obj.code
+        target = event_obj.get_target()
+        if code == lv.EVENT.VALUE_CHANGED:
+            if target == self.item1.checkbox:
+                if target.get_state() & lv.STATE.CHECKED:
+                    self.item1.enable_bg_color()
+                    self.slider_enable()
+                else:
+                    self.item1.enable_bg_color(False)
+                    self.slider_enable(False)
+
+    def slider_enable(self, enable: bool = True):
+        if enable:
+            self.slider.add_flag(lv.obj.FLAG.CLICKABLE)
+            self.slider.enable()
+        else:
+            self.slider.clear_flag(lv.obj.FLAG.CLICKABLE)
+            self.slider.enable(False)
 
 class CryptoScreen(Screen):
     def __init__(self, prev_scr=None):
