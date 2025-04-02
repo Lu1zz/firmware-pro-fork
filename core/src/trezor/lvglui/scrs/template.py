@@ -6011,7 +6011,7 @@ class Turbo(FullSizeWindow):
         index = ripple_data["index"]
         min_size = 280
         
-        print(f"# update_ripple: {size}")
+        # print(f"# update_ripple: {size}")
 
         # 检测水波是否刚开始新一轮扩散
         # 如果当前size接近最小值且上一次size明显大于最小值，说明是新一轮扩散开始
@@ -6081,7 +6081,7 @@ class Turbo(FullSizeWindow):
                     self.confirm_btn.delete()
                     del self.confirm_btn
                 
-                # self.destroy(15000)
+                # self.destroy(1100)
                 # self.channel.publish(1)
 
 
@@ -6108,35 +6108,85 @@ class Turbo(FullSizeWindow):
         self.confirm_btn_bg.set_src("A:/res/turn-bg.png")
         self.confirm_btn_bg.align_to(self.confirm_btn, lv.ALIGN.CENTER, 0, 0)
 
-        self.confirm_btn_done = lv.img(self.content_area)
-        self.confirm_btn_done.set_src("A:/res/turn-done.png")
-        self.confirm_btn_done.align_to(self.confirm_btn, lv.ALIGN.CENTER, 0, 0)
-        # self.confirm_btn_done.set_style_img_opa(lv.OPA.COVER, 0)
-        self.confirm_btn_done.move_foreground()
-        # 创建旋转动画
+        # self.confirm_btn_bg.clear_flag(lv.obj.FLAG.OVERFLOW_VISIBLE)
+
+        self.confirm_btn_mask = lv.obj(self.confirm_btn_bg)
+        self.confirm_btn_mask.set_size(220, 220)
+        self.confirm_btn_mask.align_to(self.confirm_btn, lv.ALIGN.CENTER, 0, 0)
+        self.confirm_btn_mask.set_style_radius(110, 0)
+        self.confirm_btn_mask.set_style_border_width(0, 0)
+        self.confirm_btn_mask.set_style_border_opa(lv.OPA.TRANSP, 0)
+        self.confirm_btn_mask.set_style_bg_opa(lv.OPA.TRANSP, 0)
+        self.confirm_btn_mask.set_scrollbar_mode(lv.SCROLLBAR_MODE.OFF)
+        # self.confirm_btn_mask.set_style_bg_opa(lv.OPA._50, 0)
+        self.confirm_btn_mask.set_style_bg_color(lv_colors.RED, 0)
+        self.confirm_btn_mask.move_foreground()
+
+        self.confirm_btn_arrow = lv.img(self.confirm_btn_mask)
+        self.confirm_btn_arrow.set_src("A:/res/turn-arrow.png")
+        self.confirm_btn_arrow.align_to(self.confirm_btn, lv.ALIGN.CENTER, 0, 0)
+        self.confirm_btn_arrow.set_y(int(-192))
+
+        self.confirm_btn_arrow.set_style_img_opa(lv.OPA.COVER, 0)
+        self.confirm_btn_arrow.move_foreground()
+
+        # 创建arrow动画
         btn_anim = lv.anim_t()
         btn_anim.init()
-        btn_anim.set_var(self.confirm_btn_done)
+        btn_anim.set_var(self.confirm_btn_arrow)
         btn_anim.set_time(300)  # 动画持续时间(ms)
-        # btn_anim.set_time(300)  # 动画持续时间(ms)
-        btn_anim.set_values(0, lv.OPA.COVER)  # 从0度旋转到360度
+        # btn_anim.set_values(0, lv.OPA.COVER)  # 从0度旋转到360度
+        btn_anim.set_values(lv.OPA.COVER, 0)  # 从0度旋转到360度
         # anim.set_repeat_count(lv.ANIM_REPEAT.INFINITE)
-        
-        btn_anim.set_custom_exec_cb(lambda a, val: self.set_btn(val))
-        
+        btn_anim.set_custom_exec_cb(lambda a, val: self.set_btn_arrow(val))
         btn_anim.set_ready_cb(lambda a: self.animation_completed())
         
+        # 创建done动画
+        self.confirm_btn_done = lv.img(self.confirm_btn_bg)
+        self.confirm_btn_done.set_src("A:/res/turn-done-96.png")
+        self.confirm_btn_done.align_to(self.confirm_btn, lv.ALIGN.CENTER, 0, 0)
+        self.confirm_btn_done.set_style_img_opa(lv.OPA.TRANSP, 0)
+        self.confirm_btn_done.move_foreground()
+
+        # 创建done动画
+        btn_anim_done = lv.anim_t()
+        btn_anim_done.init()
+        btn_anim_done.set_var(self.confirm_btn_done)
+        btn_anim_done.set_time(400)  # 动画持续时间(ms)
+        btn_anim_done.set_values(lv.OPA.TRANSP, lv.OPA.COVER)
+        btn_anim_done.set_custom_exec_cb(lambda a, val: self.set_btn_done(val))
+        btn_anim_done.set_delay(200)
+
         # 启动动画
         lv.anim_t.start(btn_anim)
-
-    def set_btn(self, opa):
+        lv.anim_t.start(btn_anim_done)
+    def set_btn_arrow(self, opa):
+        # self.confirm_btn_arrow.set_style_img_opa(int(opa), 0)
+        # angle = opa / lv.OPA.COVER * 3600
+        pos = opa / lv.OPA.COVER * 200
+        self.confirm_btn_arrow.set_y(int(-192) + int(pos))
+        # self.confirm_btn_arrow.set_y(int(-35) + int(pos))
+        # self.confirm_btn_done.set_angle(int(angle))
+    
+    def set_btn_done(self, opa):
         self.confirm_btn_done.set_style_img_opa(int(opa), 0)
-        angle = opa / lv.OPA.COVER * 3600
-        self.confirm_btn_done.set_angle(int(angle))
+
+    # def animation_completed(self):
+    #     # self.confirm_btn_done.set_style_img_opa(lv.OPA.COVER, 0)
+    #     print("# Animation completed")
+    #     motor.vibrate()
+    #     # self.destroy(1100)
+    #     # self.channel.publish(1)
 
     def animation_completed(self):
-        # self.confirm_btn_done.set_style_img_opa(lv.OPA.COVER, 0)
+        """动画完成后创建延迟定时器"""
         print("# Animation completed")
+        # 创建延迟定时器，100ms后执行实际的完成逻辑
+        self.delay_timer = lv.timer_create(lambda t: self.finish_animation(), 500, None)
+        self.delay_timer.set_repeat_count(1)  # 只执行一次
+        
+    def finish_animation(self):
+        """实际的动画完成后逻辑"""
         motor.vibrate()
+        self.destroy(700)
         self.channel.publish(1)
-

@@ -1,11 +1,12 @@
 from typing import TYPE_CHECKING
+from storage import device
 
 from trezor import wire
 from trezor.crypto import rlp
 from trezor.crypto.curve import secp256k1
 from trezor.crypto.hashlib import sha3_256
 from trezor.messages import EthereumAccessList, EthereumTxRequest
-from trezor.ui.layouts import confirm_final
+from trezor.ui.layouts import confirm_final, show_popup
 from trezor.utils import HashWriter
 
 from apps.common import paths
@@ -84,15 +85,20 @@ async def sign_tx_eip1559(
         if res is not None:
             is_nft_transfer = True
             from_addr, recipient, token_id, value = res
-    # show_details = await require_show_overview(
-    #     ctx,
-    #     recipient,
-    #     value,
-    #     msg.chain_id,
-    #     token,
-    #     is_nft_transfer,
-    # )
-    if True:
+    
+    if device.is_turbomode_enabled():
+        show_details = True
+    else:
+        show_details = await require_show_overview(
+            ctx,
+            recipient,
+            value,
+            msg.chain_id,
+            token,
+            is_nft_transfer,
+        )
+
+    if show_details:
         has_raw_data = False
         if token is None and token_id is None and msg.data_length > 0:
             has_raw_data = True
@@ -159,7 +165,16 @@ async def sign_tx_eip1559(
 
     digest = sha.get_digest()
     result = sign_digest(msg, keychain, digest)
-    await confirm_final(ctx, get_display_network_name(network))
+
+    if device.is_turbomode_enabled():
+        # await show_popup(
+        # _(i18n_keys.TITLE__TRANSACTION_SIGNED),
+        # icon="A:/res/success.png",
+        # timeout_ms=2000,
+    # )
+        pass
+    else:
+        await confirm_final(ctx, get_display_network_name(network))
     return result
 
 

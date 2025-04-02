@@ -62,35 +62,50 @@ async def confirm_total_ethereum_eip1559(
     evm_chain_id: int | None,
     raw_data: bytes | None,
 ) -> None:
-    from trezor.lvglui.scrs.template import TransactionDetailsETH
+    from trezor.lvglui.scrs.template import TransactionDetailsETH, Turbo
 
     short_amount, striped = strip_amount(amount)
+    
+    # 首先检查是否处于Turbo模式
     if device.is_turbomode_enabled():
-        screen = Turbo()
-    # screen = ShowRipple()
-    # screen = ShowLine()
-    # screen = ShowBar()
-    # screen = ShowLoader()
-    # screen = ShowMeter()
-    # screen = ShowSpeed(
-    #     _(i18n_keys.TITLE__SEND_MULTILINE).format(short_amount),
-    #     from_address,
-    #     to_address,
-    #     amount,
-    #     fee_max,
-    #     is_eip1559=True,
-    #     max_fee_per_gas=max_fee_per_gas,
-    #     max_priority_fee_per_gas=max_priority_fee_per_gas,
-    #     total_amount=total_amount,
-    #     primary_color=ctx.primary_color,
-    #     contract_addr=contract_addr,
-    #     token_id=str(token_id),
-    #     evm_chain_id=evm_chain_id,
-    #     raw_data=raw_data,
-    #     sub_icon_path=ctx.icon_path,
-    #     striped=striped,
-    # )
+        # 创建Turbo界面
+        turbo_screen = Turbo()
+        
+        # 等待用户交互
+        result = await interact(ctx, turbo_screen, "confirm_total", ButtonRequestType.SignTx)
+        
+        # 如果用户选择了查看详情，则显示普通模式界面
+        if not result and turbo_screen.view_details_selected:
+            # 创建普通模式的详细界面
+            detailed_screen = TransactionDetailsETH(
+                _(i18n_keys.TITLE__SEND_MULTILINE).format(short_amount),
+                from_address,
+                to_address,
+                amount,
+                fee_max,
+                is_eip1559=True,
+                max_fee_per_gas=max_fee_per_gas,
+                max_priority_fee_per_gas=max_priority_fee_per_gas,
+                total_amount=total_amount,
+                primary_color=ctx.primary_color,
+                contract_addr=contract_addr,
+                token_id=str(token_id),
+                evm_chain_id=evm_chain_id,
+                raw_data=raw_data,
+                sub_icon_path=ctx.icon_path,
+                striped=striped,
+            )
+            
+            # 等待用户在详细界面上的交互
+            await raise_if_cancelled(
+                interact(ctx, detailed_screen, "confirm_total", ButtonRequestType.SignTx)
+            )
+        elif not result:
+            # 用户在Turbo模式下取消了操作
+            await loop.sleep(300)
+            raise wire.ActionCancelled
     else:
+        # 原有的普通模式代码
         screen = TransactionDetailsETH(
             _(i18n_keys.TITLE__SEND_MULTILINE).format(short_amount),
             from_address,
@@ -109,9 +124,9 @@ async def confirm_total_ethereum_eip1559(
             sub_icon_path=ctx.icon_path,
             striped=striped,
         )
-    await raise_if_cancelled(
-        interact(ctx, screen, "confirm_total", ButtonRequestType.SignTx)
-    )
+        await raise_if_cancelled(
+            interact(ctx, screen, "confirm_total", ButtonRequestType.SignTx)
+        )
 
 
 async def confirm_total_ripple(
