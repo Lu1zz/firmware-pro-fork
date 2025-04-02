@@ -1,5 +1,5 @@
 from typing import Sequence
-
+from storage import device
 from trezor import wire
 from trezor.enums import ButtonRequestType
 from trezor.lvglui.i18n import gettext as _, keys as i18n_keys
@@ -65,7 +65,8 @@ async def confirm_total_ethereum_eip1559(
     from trezor.lvglui.scrs.template import TransactionDetailsETH
 
     short_amount, striped = strip_amount(amount)
-    screen = Turbo()
+    if device.is_turbomode_enabled():
+        screen = Turbo()
     # screen = ShowRipple()
     # screen = ShowLine()
     # screen = ShowBar()
@@ -89,24 +90,25 @@ async def confirm_total_ethereum_eip1559(
     #     sub_icon_path=ctx.icon_path,
     #     striped=striped,
     # )
-    # screen = TransactionDetailsETH(
-    #     _(i18n_keys.TITLE__SEND_MULTILINE).format(short_amount),
-    #     from_address,
-    #     to_address,
-    #     amount,
-    #     fee_max,
-    #     is_eip1559=True,
-    #     max_fee_per_gas=max_fee_per_gas,
-    #     max_priority_fee_per_gas=max_priority_fee_per_gas,
-    #     total_amount=total_amount,
-    #     primary_color=ctx.primary_color,
-    #     contract_addr=contract_addr,
-    #     token_id=str(token_id),
-    #     evm_chain_id=evm_chain_id,
-    #     raw_data=raw_data,
-    #     sub_icon_path=ctx.icon_path,
-    #     striped=striped,
-    # )
+    else:
+        screen = TransactionDetailsETH(
+            _(i18n_keys.TITLE__SEND_MULTILINE).format(short_amount),
+            from_address,
+            to_address,
+            amount,
+            fee_max,
+            is_eip1559=True,
+            max_fee_per_gas=max_fee_per_gas,
+            max_priority_fee_per_gas=max_priority_fee_per_gas,
+            total_amount=total_amount,
+            primary_color=ctx.primary_color,
+            contract_addr=contract_addr,
+            token_id=str(token_id),
+            evm_chain_id=evm_chain_id,
+            raw_data=raw_data,
+            sub_icon_path=ctx.icon_path,
+            striped=striped,
+        )
     await raise_if_cancelled(
         interact(ctx, screen, "confirm_total", ButtonRequestType.SignTx)
     )

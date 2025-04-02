@@ -5065,15 +5065,24 @@ class PassphraseTipsConfirm(FullSizeWindow):
                 return
             self.show_dismiss_anim()
 
-class TurboModeScreen(Screen):
+class TurboModeScreen(AnimScreen):
+    def collect_animation_targets(self) -> list:
+        targets = []
+        if hasattr(self, "container") and self.container:
+            targets.append(self.container)
+        if hasattr(self, "tips") and self.tips:
+            targets.append(self.tips)
+        return targets
+
     def __init__(self, prev_scr=None):
         if not hasattr(self, "_init"):
             self._init = True
         else:
             return
-        super().__init__(prev_scr, title="Turbo mode", subtitle="Sign transactions with one click", nav_back=True)
+        super().__init__(prev_scr, title="Turbo mode", nav_back=True)
+        # super().__init__(prev_scr, title="Turbo mode", subtitle="Sign transactions with one click", nav_back=True)
         
-        self.container = ContainerFlexCol(self.content_area, self.subtitle, padding_row=2)
+        self.container = ContainerFlexCol(self.content_area, self.title, padding_row=2)
 
         self.turbo_mode = ListItemBtnWithSwitch(
             self.container, "Turbo mode"
@@ -5082,7 +5091,7 @@ class TurboModeScreen(Screen):
             StyleWrapper().bg_color(lv_colors.ONEKEY_BLACK_3).bg_opa(lv.OPA.COVER), 0
         )
         print("# device.is_turbomode_enabled()", device.is_turbomode_enabled())
-        if not device.is_turbomode_enabled(): #TBD
+        if not device.is_turbomode_enabled():
             self.turbo_mode.clear_state()
 
         self.tips = lv.label(self.content_area)
@@ -5096,12 +5105,15 @@ class TurboModeScreen(Screen):
             .text_align_left(),
             0,
         )
-        self.tips.set_text("Only EVM Network and Solana")
+        self.tips.set_text("Sign transactions with one click.(only EVM Network and Solana)")
 
         self.container.add_event_cb(self.on_click, lv.EVENT.CLICKED, None)
         self.turbo_mode.add_event_cb(
             self.on_value_changed, lv.EVENT.VALUE_CHANGED, None
         )
+        
+        self.load_screen(self)
+        gc.collect()
 
     def on_value_changed(self, event_obj):
         code = event_obj.code

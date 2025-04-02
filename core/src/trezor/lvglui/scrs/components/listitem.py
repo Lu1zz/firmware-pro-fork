@@ -382,7 +382,7 @@ class ShortInfoItem(lv.obj):
         title_text,
         subtitle_text,
         bg_color=lv_colors.ONEKEY_BLACK_4,
-        border_color=lv_colors.ONEKEY_WHITE_4,
+        border_color=lv_colors.WHITE_3,
         title_color=lv_colors.WHITE,
         subtitle_color=lv_colors.ONEKEY_GRAY_4,
     ):
@@ -398,7 +398,7 @@ class ShortInfoItem(lv.obj):
             .radius(40)
             .border_width(2)
             .border_color(border_color)
-            .border_opa(lv.OPA._30),
+            .border_opa(lv.OPA._20),
             0
         )
         

@@ -1,6 +1,5 @@
 from typing import TYPE_CHECKING
 from ubinascii import hexlify
-
 from trezor import ui, wire
 from trezor.enums import ButtonRequestType
 from trezor.lvglui.i18n import gettext as _, keys as i18n_keys
@@ -1370,18 +1369,18 @@ async def confirm_sol_message(
 async def confirm_final(ctx: wire.Context, chain_name: str) -> None:
     from trezor.ui.layouts.lvgl import confirm_action
 
-    # await confirm_action(
-    #     ctx,
-    #     "confirm_final",
-    #     title=_(i18n_keys.TITLE__CONFIRM_TRANSACTION),
-    #     action=_(i18n_keys.SUBTITLE__DO_YOU_WANT_TO_SIGN__THIS_STR_TX).format(
-    #         chain_name
-    #     ),
-    #     verb=_(i18n_keys.BUTTON__SLIDE_TO_SIGN),
-    #     hold=True,
-    #     anim_dir=0,
-    #     icon=ctx.icon_path,
-    # )
+    await confirm_action(
+        ctx,
+        "confirm_final",
+        title=_(i18n_keys.TITLE__CONFIRM_TRANSACTION),
+        action=_(i18n_keys.SUBTITLE__DO_YOU_WANT_TO_SIGN__THIS_STR_TX).format(
+            chain_name
+        ),
+        verb=_(i18n_keys.BUTTON__SLIDE_TO_SIGN),
+        hold=True,
+        anim_dir=0,
+        icon=ctx.icon_path,
+    )
     await show_popup(
         _(i18n_keys.TITLE__TRANSACTION_SIGNED),
         icon="A:/res/success.png",
