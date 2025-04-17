@@ -86,6 +86,7 @@ _TREZOR_COMPATIBLE_VALUE: bool | None = None
 _NEEDS_BACKUP_VALUE: bool | None = None
 _FIDO_SEED_GEN = False
 _FIDO2_COUNTER_VALUE: int | None = None
+_TURBOMODE_VALUE: bool | None = None
 
 if utils.USE_THD89:
     import uctypes
@@ -239,6 +240,8 @@ if utils.USE_THD89:
     offset += uctypes.sizeof(struct_label, uctypes.LITTLE_ENDIAN)
     struct_public["fido2_counter"] = (offset, struct_bool)
     offset += uctypes.sizeof(struct_bool, uctypes.LITTLE_ENDIAN)
+    struct_public["turbomode"] = (offset, struct_bool)
+    offset += uctypes.sizeof(struct_bool, uctypes.LITTLE_ENDIAN)
 
     # public_field = uctypes.struct(0, struct_public, uctypes.LITTLE_ENDIAN)
     assert (
@@ -298,6 +301,7 @@ if utils.USE_THD89:
     _HAS_PROMPTED_FINGERPRINT = struct_public["has_prompted_fingerprint"][0]
     _FINGER_FAILED_COUNT = struct_public["finger_failed_count"][0]
     _FIDO2_COUNTER = struct_public["fido2_counter"][0]
+    _TURBOMODE = struct_public["turbomode"][0]
     U2F_COUNTER = 0x00  # u2f counter
 
     # recovery key
@@ -363,6 +367,7 @@ else:
     _HAS_PROMPTED_FINGERPRINT = (0x8E)  # bool
     _FINGER_FAILED_COUNT = (0x8F)  # int
     _FIDO2_COUNTER = const(0x90)  # int
+    _TURBOMODE = const(0x91)  # bool
     # fmt: on
 SAFETY_CHECK_LEVEL_STRICT: Literal[0] = const(0)
 SAFETY_CHECK_LEVEL_PROMPT: Literal[1] = const(1)
@@ -648,6 +653,28 @@ def set_animation_enable(enable: bool) -> None:
         public=True,
     )
     _ANIMATION_VALUE = enable
+
+
+def is_turbomode_enabled() -> bool:
+    global _TURBOMODE_VALUE
+    if _TURBOMODE_VALUE is None:
+        turbomode = common.get(_NAMESPACE, _TURBOMODE, public=True)
+        if turbomode == common._FALSE_BYTE:
+            _TURBOMODE_VALUE = False
+        else:
+            _TURBOMODE_VALUE = True
+    return _TURBOMODE_VALUE
+
+
+def set_turbomode_enable(enable: bool) -> None:
+    global _TURBOMODE_VALUE
+    common.set_bool(
+        _NAMESPACE,
+        _TURBOMODE,
+        enable,
+        public=True,
+    )
+    _TURBOMODE_VALUE = enable
 
 
 def keyboard_haptic_enabled() -> bool:
