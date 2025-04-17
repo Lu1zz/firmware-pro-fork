@@ -10,6 +10,7 @@ from ..lv_colors import lv_colors
 from ..lv_symbols import LV_SYMBOLS
 from . import (
     font_GeistMono28,
+    font_GeistMono38,
     font_GeistRegular20,
     font_GeistRegular30,
     font_GeistSemiBold26,
@@ -80,11 +81,12 @@ class Address(FullSizeWindow):
             del self.subtitle
         self.btn_no.label.set_text(_(i18n_keys.BUTTON__QRCODE))
 
-        self.item_addr = DisplayItem(self.content_area, None, self.address, radius=40)
+        self.item_addr = DisplayItem(self.content_area, None, self.format_address(self.address), radius=40)
         self.item_addr.add_style(StyleWrapper().pad_ver(24), 0)
         self.item_addr.label.add_style(
             StyleWrapper()
-            .text_font(font_GeistSemiBold48)
+            # .text_font(font_GeistSemiBold48)
+            .text_font(font_GeistMono38)
             .text_line_space(-2)
             .text_color(lv_colors.LIGHT_GRAY),
             0,
@@ -126,6 +128,15 @@ class Address(FullSizeWindow):
                 "A:/res/group-icon-more.png",
             )
 
+    def format_address(self, address: str) -> str:
+        address = address.replace(" ", "")
+        groups = [address[i:i+4] for i in range(0, len(address), 4)]
+        
+        lines = [" ".join(groups[i:i+4]) for i in range(0, len(groups), 4)]
+        formatted_address = "\n".join(lines)
+        
+        return formatted_address
+    
     def show_qr_code(self, has_tips: bool = False):
         self.current = self.SHOW_TYPE.QRCODE
         if hasattr(self, "container"):
@@ -426,8 +437,8 @@ class AddressOffline(FullSizeWindow):
         self.item_group_body = DisplayItem(
             self.group_address,
             None,
-            content=self.address,
-            font=font_GeistSemiBold48,
+            self.format_address(self.address),
+            font=font_GeistMono38,
         )
         self.group_address.add_dummy()
 
@@ -443,6 +454,15 @@ class AddressOffline(FullSizeWindow):
                 0,
             )
 
+    def format_address(self, address: str) -> str:
+        address = address.replace(" ", "")
+        groups = [address[i:i+4] for i in range(0, len(address), 4)]
+        
+        lines = [" ".join(groups[i:i+4]) for i in range(0, len(groups), 4)]
+        formatted_address = "\n".join(lines)
+        
+        return formatted_address
+    
     def show_qr_code(self, has_tips: bool = False):
         self.current = self.SHOW_TYPE.QRCODE
         if hasattr(self, "group_address"):
@@ -4588,7 +4608,7 @@ class Turbo(FullSizeWindow):
         )
 
         self.add_style(
-            StyleWrapper().bg_img_src("A:/res/rgb565.jpg"),
+            StyleWrapper().bg_img_src("A:/res/turbo-bg.jpg"),
             0,
         )
 
@@ -4600,7 +4620,7 @@ class Turbo(FullSizeWindow):
 
         # 标题
         self.title = lv.img(self.content_area)
-        self.title.set_src("A:/res/Turbomode.png")
+        self.title.set_src("A:/res/turbo-header.png")
         self.title.align(lv.ALIGN.TOP_MID, 0, 60)
 
         from .components.listitem import ShortInfoItem
@@ -4625,7 +4645,7 @@ class Turbo(FullSizeWindow):
         self.confirm_btn = lv.imgbtn(self.content_area)
         self.confirm_btn.set_size(280, 280)
         self.confirm_btn.align_to(self.info_item, lv.ALIGN.OUT_BOTTOM_MID, 0, 75)
-        self.confirm_btn.set_style_bg_img_src("A:/res/Turn.png", 0)
+        self.confirm_btn.set_style_bg_img_src("A:/res/turbo-confirm.png", 0)
         self.confirm_btn.add_style(click_style, lv.PART.MAIN | lv.STATE.PRESSED)
         self.confirm_btn.add_flag(lv.obj.FLAG.EVENT_BUBBLE)
         self.confirm_btn.add_event_cb(self.on_click, lv.EVENT.CLICKED, None)
@@ -4857,7 +4877,7 @@ class Turbo(FullSizeWindow):
         self.ripple_container.move_foreground()
 
         self.confirm_bg = lv.img(self.content_area)
-        self.confirm_bg.set_src("A:/res/turn-bg.png")
+        self.confirm_bg.set_src("A:/res/turbo-confirm-bg.png")
         self.confirm_bg.align_to(self.confirm_btn, lv.ALIGN.CENTER, 0, 0)
 
         self.img_mask = lv.obj(self.confirm_bg)
@@ -4871,14 +4891,14 @@ class Turbo(FullSizeWindow):
         self.img_mask.move_foreground()
 
         self.img_arrow = lv.img(self.img_mask)
-        self.img_arrow.set_src("A:/res/turn-arrow.png")
+        self.img_arrow.set_src("A:/res/turbo-confirm-arrow.png")
         self.img_arrow.align_to(self.confirm_btn, lv.ALIGN.CENTER, 0, 0)
         self.img_arrow.set_y(int(-192))
         self.img_arrow.set_style_img_opa(lv.OPA.COVER, 0)
         self.img_arrow.move_foreground()
 
         self.img_mark = lv.img(self.confirm_bg)
-        self.img_mark.set_src("A:/res/turbo-done-96.png")
+        self.img_mark.set_src("A:/res/turbo-confirm-done.png")
         self.img_mark.align_to(self.confirm_btn, lv.ALIGN.CENTER, 0, 0)
         self.img_mark.set_style_img_opa(lv.OPA.TRANSP, 0)
         self.img_mark.move_foreground()
