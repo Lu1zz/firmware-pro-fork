@@ -807,3 +807,38 @@ message UnlockPath {
 message UnlockedPathRequest {
     optional bytes mac = 1;            // authentication code for future UnlockPath calls
 }
+
+
+
+/**
+ * Request: Upload a label in bytes format to device
+ * @next LabelRequest
+ * @next Success
+ * @next Failure
+ */
+message LabelUpload {
+    required bytes initial_chunk = 1;
+    required uint32 data_length = 2;
+    required bool passphrase_enabled = 3;
+}
+
+/**
+ * Response: Device asks for more label data
+ * @next LabelAck
+ */
+message LabelRequest {
+    required uint32 offset = 1;
+    required uint32 data_length = 2;
+}
+
+/**
+ * Request: Send label data chunk to the device
+ * @next LabelRequest
+ * @next Success
+ * @next Failure
+ */
+message LabelAck {
+    required bytes data_chunk = 1;
+    optional bytes hash = 2;
+}
+

@@ -419,3 +419,43 @@ def emmc_dir_make(client: "TrezorClient", path_dir: str) -> "MessageType":
 def emmc_dir_remove(client: "TrezorClient", path_dir: str) -> "MessageType":
     resp = client.call(messages.EmmcDirRemove(path=path_dir))
     return resp
+
+@session
+def label_upload(
+    client: "TrezorClient",
+    data: str,
+    progress_update: Callable[[int], Any] = lambda _: None,
+):
+    """Upload custom label to device.
+    
+    Args:
+        client: The TrezorClient instance
+        data: JSON string containing the label data
+        progress_update: Callback function for progress updates
+    """
+    # data is already a JSON string, just encode it to bytes
+    data_bytes = data.encode() if data else None
+    
+    if data_bytes:
+        # Calculate total data length
+        data_length = len(data_bytes)
+        
+        # Send initial upload request
+        resp = client.call(
+            messages.LabelUpload(
+                initial_chunk=data_bytes,
+                data_length=data_length,
+                passphrase_enabled=False
+            )
+        )
+        
+        progress_update(data_length)
+        
+        # Process response
+        if isinstance(resp, messages.Success):
+            client.refresh_features()
+            return
+        else:
+            raise RuntimeError(f"Unexpected response: {resp}")
+    else:
+        raise ValueError("Empty label data provided")

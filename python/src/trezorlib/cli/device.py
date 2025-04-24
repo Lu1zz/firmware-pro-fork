@@ -727,3 +727,27 @@ def emmc_dir_make(client: "TrezorClient", path: str) -> None:
 @with_client
 def emmc_dir_remove(client: "TrezorClient", path: str) -> None:
     device.emmc_dir_remove(client, path)
+
+@cli.command()
+# fmt: off
+@click.option("-n", "--name", required=True, help="json of new account name")
+# fmt: on
+@with_client
+def label_update(
+    client: "TrezorClient",
+    name: str,
+) -> None:
+    try:
+        click.echo("Please confirm the action on your Trezor device")
+        
+        click.echo("Uploading...\r", nl=False)
+        with click.progressbar(
+            label="Uploading", length=len(name), show_eta=False
+        ) as bar:
+            device.label_upload(client, name)
+        
+    except exceptions.Cancelled:
+        click.echo("Operation cancelled on device.")
+    except exceptions.TrezorException as e:
+        click.echo(f"Label update failed: {e}")
+        sys.exit(3)

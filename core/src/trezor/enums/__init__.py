@@ -441,6 +441,9 @@ if TYPE_CHECKING:
         OnekeyGetFeatures = 10025
         OnekeyFeatures = 10026
         WriteSEPrivateKey = 10027
+        LabelUpload = 10028
+        LabelRequest = 10029
+        LabelAck = 10030
 
     class FailureType(IntEnum):
         UnexpectedMessage = 1

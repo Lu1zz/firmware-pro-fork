@@ -3918,6 +3918,56 @@ if TYPE_CHECKING:
         def is_type_of(cls, msg: Any) -> TypeGuard["UnlockedPathRequest"]:
             return isinstance(msg, cls)
 
+    class LabelUpload(protobuf.MessageType):
+        initial_chunk: "bytes"
+        data_length: "int"
+        passphrase_enabled: "bool"
+
+        def __init__(
+            self,
+            *,
+            initial_chunk: "bytes",
+            data_length: "int",
+            passphrase_enabled: "bool",
+        ) -> None:
+            pass
+
+        @classmethod
+        def is_type_of(cls, msg: Any) -> TypeGuard["LabelUpload"]:
+            return isinstance(msg, cls)
+
+    class LabelRequest(protobuf.MessageType):
+        offset: "int"
+        data_length: "int"
+
+        def __init__(
+            self,
+            *,
+            offset: "int",
+            data_length: "int",
+        ) -> None:
+            pass
+
+        @classmethod
+        def is_type_of(cls, msg: Any) -> TypeGuard["LabelRequest"]:
+            return isinstance(msg, cls)
+
+    class LabelAck(protobuf.MessageType):
+        data_chunk: "bytes"
+        hash: "bytes | None"
+
+        def __init__(
+            self,
+            *,
+            data_chunk: "bytes",
+            hash: "bytes | None" = None,
+        ) -> None:
+            pass
+
+        @classmethod
+        def is_type_of(cls, msg: Any) -> TypeGuard["LabelAck"]:
+            return isinstance(msg, cls)
+
     class FileInfo(protobuf.MessageType):
         name: "str"
         size: "int"

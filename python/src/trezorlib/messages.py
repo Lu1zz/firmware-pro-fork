@@ -449,6 +449,9 @@ class MessageType(IntEnum):
     OnekeyGetFeatures = 10025
     OnekeyFeatures = 10026
     WriteSEPrivateKey = 10027
+    LabelUpload = 10028
+    LabelRequest = 10029
+    LabelAck = 10030
 
 
 class FailureType(IntEnum):
@@ -5477,6 +5480,60 @@ class UnlockedPathRequest(protobuf.MessageType):
         mac: Optional["bytes"] = None,
     ) -> None:
         self.mac = mac
+
+
+class LabelUpload(protobuf.MessageType):
+    MESSAGE_WIRE_TYPE = 10028
+    FIELDS = {
+        1: protobuf.Field("initial_chunk", "bytes", repeated=False, required=True),
+        2: protobuf.Field("data_length", "uint32", repeated=False, required=True),
+        3: protobuf.Field("passphrase_enabled", "bool", repeated=False, required=True),
+    }
+
+    def __init__(
+        self,
+        *,
+        initial_chunk: "bytes",
+        data_length: "int",
+        passphrase_enabled: "bool",
+    ) -> None:
+        self.initial_chunk = initial_chunk
+        self.data_length = data_length
+        self.passphrase_enabled = passphrase_enabled
+
+
+class LabelRequest(protobuf.MessageType):
+    MESSAGE_WIRE_TYPE = 10029
+    FIELDS = {
+        1: protobuf.Field("offset", "uint32", repeated=False, required=True),
+        2: protobuf.Field("data_length", "uint32", repeated=False, required=True),
+    }
+
+    def __init__(
+        self,
+        *,
+        offset: "int",
+        data_length: "int",
+    ) -> None:
+        self.offset = offset
+        self.data_length = data_length
+
+
+class LabelAck(protobuf.MessageType):
+    MESSAGE_WIRE_TYPE = 10030
+    FIELDS = {
+        1: protobuf.Field("data_chunk", "bytes", repeated=False, required=True),
+        2: protobuf.Field("hash", "bytes", repeated=False, required=False),
+    }
+
+    def __init__(
+        self,
+        *,
+        data_chunk: "bytes",
+        hash: Optional["bytes"] = None,
+    ) -> None:
+        self.data_chunk = data_chunk
+        self.hash = hash
 
 
 class FileInfo(protobuf.MessageType):

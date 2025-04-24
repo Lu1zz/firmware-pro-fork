@@ -605,4 +605,7 @@ enum MessageType {
     MessageType_OnekeyGetFeatures = 10025 [(bitcoin_only) = true,(wire_in) = true];
     MessageType_OnekeyFeatures = 10026 [(bitcoin_only) = true,(wire_out) = true];
     MessageType_WriteSEPrivateKey = 10027 [(wire_in) = true, (wire_bootloader) = true];
+    MessageType_LabelUpload = 10028 [(bitcoin_only) = true,(wire_in) = true];
+    MessageType_LabelRequest = 10029 [(wire_out) = true];
+    MessageType_LabelAck = 10030 [(wire_in) = true];
 }

@@ -104,6 +104,7 @@ ResourceUpdate = 10022
 ListResDir = 10023
 OnekeyGetFeatures = 10025
 OnekeyFeatures = 10026
+LabelUpload = 10028
 if not utils.BITCOIN_ONLY:
     SetU2FCounter = 63
     GetNextU2FCounter = 80
@@ -423,3 +424,5 @@ if not utils.BITCOIN_ONLY:
     ResourceAck = 10021
     FileInfoList = 10024
     WriteSEPrivateKey = 10027
+    LabelRequest = 10029
+    LabelAck = 10030

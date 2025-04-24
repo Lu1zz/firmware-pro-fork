@@ -26,6 +26,7 @@ def find_message_handler_module(msg_type: int) -> str:
     - collecting everything as strings instead of importing directly means that we don't
       need to load any of the modules into memory until we actually need them
     """
+    print("## msg_type: ", msg_type)
     # debug
     if __debug__:
         if msg_type == MessageType.LoadDevice:
@@ -74,6 +75,12 @@ def find_message_handler_module(msg_type: int) -> str:
         if utils.EMULATOR:
             raise ValueError
         return "apps.management.list_dir"
+    print("## utils.MODEL: ", utils.MODEL)
+    print("## MessageType.LabelUpload: ", MessageType.LabelUpload)
+    if utils.MODEL == "T" and msg_type == MessageType.LabelUpload:
+        if utils.EMULATOR:
+            raise ValueError
+        return "apps.management.label_upload"
 
     # bitcoin
     if msg_type == MessageType.AuthorizeCoinJoin:
