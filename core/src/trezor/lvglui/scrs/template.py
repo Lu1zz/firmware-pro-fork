@@ -4960,7 +4960,7 @@ class Turbo(FullSizeWindow):
         )
 
         self.add_style(
-            StyleWrapper().bg_img_src("A:/res/rgb565.jpg"),
+            StyleWrapper().bg_img_src("A:/res/turbo-bg.jpg"),
             0,
         )
 
@@ -4972,7 +4972,7 @@ class Turbo(FullSizeWindow):
 
         # 标题
         self.title = lv.img(self.content_area)
-        self.title.set_src("A:/res/Turbomode.png")
+        self.title.set_src("A:/res/turbo-header.png")
         self.title.align(lv.ALIGN.TOP_MID, 0, 60)
 
         from .components.listitem import ShortInfoItem
@@ -4997,7 +4997,7 @@ class Turbo(FullSizeWindow):
         self.confirm_btn = lv.imgbtn(self.content_area)
         self.confirm_btn.set_size(280, 280)
         self.confirm_btn.align_to(self.info_item, lv.ALIGN.OUT_BOTTOM_MID, 0, 75)
-        self.confirm_btn.set_style_bg_img_src("A:/res/Turn.png", 0)
+        self.confirm_btn.set_style_bg_img_src("A:/res/turbo-confirm.png", 0)
         self.confirm_btn.add_style(click_style, lv.PART.MAIN | lv.STATE.PRESSED)
         self.confirm_btn.add_flag(lv.obj.FLAG.EVENT_BUBBLE)
         self.confirm_btn.add_event_cb(self.on_click, lv.EVENT.CLICKED, None)
@@ -5229,7 +5229,7 @@ class Turbo(FullSizeWindow):
         self.ripple_container.move_foreground()
 
         self.confirm_bg = lv.img(self.content_area)
-        self.confirm_bg.set_src("A:/res/turn-bg.png")
+        self.confirm_bg.set_src("A:/res/turbo-confirm-bg.png")
         self.confirm_bg.align_to(self.confirm_btn, lv.ALIGN.CENTER, 0, 0)
 
         self.img_mask = lv.obj(self.confirm_bg)
@@ -5243,14 +5243,14 @@ class Turbo(FullSizeWindow):
         self.img_mask.move_foreground()
 
         self.img_arrow = lv.img(self.img_mask)
-        self.img_arrow.set_src("A:/res/turn-arrow.png")
+        self.img_arrow.set_src("A:/res/turbo-confirm-arrow.png")
         self.img_arrow.align_to(self.confirm_btn, lv.ALIGN.CENTER, 0, 0)
         self.img_arrow.set_y(int(-192))
         self.img_arrow.set_style_img_opa(lv.OPA.COVER, 0)
         self.img_arrow.move_foreground()
 
         self.img_mark = lv.img(self.confirm_bg)
-        self.img_mark.set_src("A:/res/turbo-done-96.png")
+        self.img_mark.set_src("A:/res/turbo-confirm-done.png")
         self.img_mark.align_to(self.confirm_btn, lv.ALIGN.CENTER, 0, 0)
         self.img_mark.set_style_img_opa(lv.OPA.TRANSP, 0)
         self.img_mark.move_foreground()
