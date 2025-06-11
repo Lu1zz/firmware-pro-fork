@@ -24,6 +24,7 @@ from trezor.ui.layouts import (
 from trezor.ui.layouts.lvgl.altcoin import (
     confirm_total_ethereum,
     confirm_total_ethereum_eip1559,
+    confirm_approve_erc20,
 )
 
 from . import networks, tokens
@@ -156,6 +157,41 @@ async def require_confirm_eip1559_fee(
         raw_data=raw_data,
     )
 
+async def require_confirm_eip1559_erc20_approve(
+    ctx: Context,
+    spending: int,
+    max_priority_fee: int,
+    max_gas_fee: int,
+    gas_limit: int,
+    chain_id: int,
+    token: tokens.EthereumTokenInfo | None = None,
+    from_address: str | None = None,
+    to_address: str | None = None,
+    contract_addr: str | None = None,
+    token_id: int | None = None,
+    evm_chain_id: int | None = None,
+    raw_data: bytes | None = None,
+) -> None:
+    print(f"# require_confirm_eip1559_erc20_approve: {spending}")
+    fee_max = max_gas_fee * gas_limit
+    await confirm_approve_erc20(
+        ctx,
+        format_ethereum_amount(
+            spending, token, chain_id, is_nft=True if token_id else False
+        ),
+        format_ethereum_amount(max_priority_fee, None, chain_id),
+        format_ethereum_amount(max_gas_fee, None, chain_id),
+        format_ethereum_amount(fee_max, None, chain_id),
+        from_address,
+        to_address,
+        format_ethereum_amount(spending + fee_max, None, chain_id)
+        if (token is None and contract_addr is None)
+        else None,
+        contract_addr,
+        token_id,
+        evm_chain_id=evm_chain_id,
+        raw_data=raw_data,
+    )
 
 def require_confirm_unknown_token(
     ctx: Context, address_bytes: bytes

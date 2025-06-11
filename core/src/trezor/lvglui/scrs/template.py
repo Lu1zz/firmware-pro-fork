@@ -16,6 +16,7 @@ from . import (
     font_GeistRegular30,
     font_GeistSemiBold26,
     font_GeistSemiBold38,
+    font_GeistSemiBold48,
 )
 from .common import FullSizeWindow, lv
 from .components.banner import LEVEL, Banner
@@ -725,6 +726,151 @@ class TransactionOverview(FullSizeWindow):
                 + [self.layout_address or ""]
             )
 
+
+class ApproveErc20ETH(FullSizeWindow):
+    def __init__(
+        self,
+        title,
+        address_from,
+        address_to,
+        amount,
+        fee_max,
+        is_eip1559=False,
+        gas_price=None,
+        max_priority_fee_per_gas=None,
+        max_fee_per_gas=None,
+        total_amount=None,
+        primary_color=lv_colors.ONEKEY_GREEN,
+        contract_addr:str|None=None,
+        token_id=None,
+        evm_chain_id=None,
+        raw_data=None,
+        icon_path="A:/res/okx-logo-96.png",
+        # icon_path="A:/res/icon-send.png",
+        sub_icon_path=None,
+        striped=False,
+    ):
+        super().__init__(
+            title,
+            None,
+            _(i18n_keys.BUTTON__CONTINUE),
+            _(i18n_keys.BUTTON__REJECT),
+            primary_color=primary_color,
+            icon_path=icon_path,
+            sub_icon_path=sub_icon_path,
+        )
+        self.title.set_style_text_font(font_GeistSemiBold48, 0)
+        print(f"# ApproveErc20ETH: {title}")
+        self.primary_color = primary_color
+        self.container = ContainerFlexCol(self.content_area, self.title, pos=(0, 40))
+        # if striped:
+        #     self.group_amounts = ContainerFlexCol(
+        #         self.container, None, padding_row=0, no_align=True
+        #     )
+        #     self.item_group_header = CardHeader(
+        #         self.group_amounts,
+        #         _(i18n_keys.LIST_KEY__AMOUNT__COLON),
+        #         "A:/res/group-icon-amount.png",
+        #     )
+        #     self.group_body_amount = DisplayItem(
+        #         self.group_amounts,
+        #         None,
+        #         amount,
+        #     )
+        #     self.group_amounts.add_dummy()
+
+        self.group_directions = ContainerFlexCol(
+            self.container, None, padding_row=0, no_align=True
+        )
+        # self.item_group_header = CardHeader(
+        #     self.group_directions,
+        #     _(i18n_keys.FORM__DIRECTIONS),
+        #     "A:/res/group-icon-directions.png",
+        # )
+        self.group_directions.add_dummy()
+
+        self.item_group_body_token_address= DisplayItem(
+            self.group_directions,
+            "Contract Address",
+            "0x" + contract_addr if contract_addr else "",
+        )
+        self.item_group_body_approve_to = DisplayItem(
+            self.group_directions,
+            "Approve to",
+            address_to,
+        )
+        self.item_group_body_from_addr = DisplayItem(
+            self.group_directions,
+            "From",
+            address_from,
+        )
+        self.item_group_body_max_fee = DisplayItem(
+            self.group_directions,
+            "Max fee",
+            fee_max,
+        )
+
+        self.group_directions.add_dummy()
+
+        # if evm_chain_id:
+        #     self.group_more = ContainerFlexCol(
+        #         self.container, None, padding_row=0, no_align=True
+        #     )
+        #     self.item_group_header = CardHeader(
+        #         self.group_more, _(i18n_keys.FORM__MORE), "A:/res/group-icon-more.png"
+        #     )
+        #     self.item_group_body_chain_id = DisplayItem(
+        #         self.group_more,
+        #         _(i18n_keys.LIST_KEY__CHAIN_ID__COLON),
+        #         str(evm_chain_id),
+        #     )
+
+        #     self.group_more.add_dummy()
+
+        # if raw_data:
+        #     from trezor import strings
+
+        #     self.data_str = strings.format_customer_data(raw_data)
+        #     if not self.data_str:
+        #         return
+        #     self.long_data = False
+        #     if len(self.data_str) > 225:
+        #         self.long_data = True
+        #         self.data = self.data_str[:222] + "..."
+        #     else:
+        #         self.data = self.data_str
+        #     self.item_data = CardItem(
+        #         self.container,
+        #         _(i18n_keys.LIST_KEY__DATA__COLON),
+        #         self.data,
+        #         "A:/res/group-icon-data.png",
+        #     )
+        #     if self.long_data:
+        #         self.show_full_data = NormalButton(
+        #             self.item_data.content, _(i18n_keys.BUTTON__VIEW_DATA)
+        #         )
+        #         self.show_full_data.set_size(lv.SIZE.CONTENT, 77)
+        #         self.show_full_data.add_style(
+        #             StyleWrapper().text_font(font_GeistSemiBold26).pad_hor(24), 0
+        #         )
+        #         self.show_full_data.align(lv.ALIGN.CENTER, 0, 0)
+        #         self.show_full_data.remove_style(None, lv.PART.MAIN | lv.STATE.PRESSED)
+        #         self.show_full_data.add_event_cb(self.on_click, lv.EVENT.CLICKED, None)
+
+    def on_click(self, event_obj):
+        code = event_obj.code
+        target = event_obj.get_target()
+        if code == lv.EVENT.CLICKED:
+            if target == self.show_full_data:
+                PageAbleMessage(
+                    _(i18n_keys.TITLE__VIEW_DATA),
+                    self.data_str,
+                    None,
+                    primary_color=self.primary_color,
+                    font=font_GeistMono28,
+                    confirm_text=None,
+                    cancel_text=None,
+                )
 
 class TransactionDetailsETH(FullSizeWindow):
     def __init__(

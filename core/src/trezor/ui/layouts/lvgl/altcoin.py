@@ -44,6 +44,45 @@ async def confirm_total_ethereum(
         interact(ctx, screen, "confirm_total", ButtonRequestType.SignTx)
     )
 
+async def confirm_approve_erc20(
+    ctx: wire.GenericContext,
+    amount: str,
+    max_priority_fee_per_gas,
+    max_fee_per_gas,
+    fee_max: str,
+    from_address: str | None,
+    to_address: str | None,
+    total_amount: str | None,
+    contract_addr: str | None,
+    token_id: int | None,
+    evm_chain_id: int | None,
+    raw_data: bytes | None,
+) -> None:
+    from trezor.lvglui.scrs.template import ApproveErc20ETH
+    print(f"# confirm_approve_erc20: {amount}")
+    short_amount, striped = strip_amount(amount)
+    screen = ApproveErc20ETH(
+        "Approve 3.157624 DAI for OKX DEX",
+        #  _(i18n_keys.TITLE__SEND_MULTILINE).format(short_amount， spender_name),
+        from_address,
+        to_address,
+        amount,
+        fee_max,
+        is_eip1559=True,
+        max_fee_per_gas=max_fee_per_gas,
+        max_priority_fee_per_gas=max_priority_fee_per_gas,
+        total_amount=total_amount,
+        primary_color=ctx.primary_color,
+        contract_addr=contract_addr,
+        token_id=str(token_id),
+        evm_chain_id=evm_chain_id,
+        raw_data=raw_data,
+        sub_icon_path=ctx.icon_path,
+        striped=striped,
+    )
+    await raise_if_cancelled(
+        interact(ctx, screen, "confirm_total", ButtonRequestType.SignTx)
+    )
 
 async def confirm_total_ethereum_eip1559(
     ctx: wire.GenericContext,
