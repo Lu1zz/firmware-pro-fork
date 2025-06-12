@@ -1,5 +1,3 @@
-""" This module is used to display the signature information of a transaction. """
-
 from typing import Any, Dict
 
 from trezor.lvglui.i18n import gettext as _, keys as i18n_keys
@@ -27,7 +25,7 @@ class AddressFormatter:
         """Truncate address for compact display"""
         if len(address) <= start_chars + end_chars + 2:
             return address
-        return f"{address[:start_chars]}...{address[-end_chars:]}"
+        return address[:start_chars] + "..." + address[-end_chars:]
 
 
 class DirectionComponent:
@@ -148,7 +146,7 @@ class FeeComponent:
         fee: str | None = None,
         maximum_fee: str | None = None,
         gas_price: str | None = None,
-        priority_fee: str | None = None,
+        priority_fee_per_gas: str | None = None,
         max_fee_per_gas: str | None = None,
         gas_limit: str | None = None,
         gas_fee_cap: str | None = None,
@@ -182,8 +180,8 @@ class FeeComponent:
         if gas_price:
             DisplayItem(self.container, _(i18n_keys.LIST_KEY__GAS_PRICE__COLON), gas_price)
         
-        if priority_fee:
-            DisplayItem(self.container, _(i18n_keys.LIST_KEY__PRIORITY_FEE_PER_GAS__COLON), priority_fee)
+        if priority_fee_per_gas:
+            DisplayItem(self.container, _(i18n_keys.LIST_KEY__PRIORITY_FEE_PER_GAS__COLON), priority_fee_per_gas)
         
         if max_fee_per_gas:
             DisplayItem(self.container, _(i18n_keys.LIST_KEY__MAXIMUM_FEE_PER_GAS__COLON), max_fee_per_gas)
@@ -374,3 +372,57 @@ class MemoComponent:
             self.icon,
         )
 
+class OverviewComponent:
+    """Component for displaying overview information"""
+    
+    def __init__(
+        self, 
+        parent, 
+        title: str | None = None,
+        icon: str | None = None,
+        # Overview fields
+        approve_spender: str | None = None,
+        max_fee: str | None = None,
+        token_address: str | None = None,
+    ):
+        self.parent = parent
+        self.title = title or _(i18n_keys.OVERVIEW)
+        self.icon = icon or "A:/res/group-icon-more.png"
+        
+        # 检查是否有任何字段需要显示
+        has_content = any([
+            approve_spender, token_address, max_fee
+        ])
+        
+        if not has_content:
+            return
+            
+        # 创建组容器
+        self.group = ContainerFlexCol(parent, None, padding_row=0, no_align=True)
+        self.group_header = CardHeader(self.group, self.title, self.icon)
+        
+        # 根据字段值动态添加显示项
+        if approve_spender:
+            DisplayItem(
+                self.group,
+                _(i18n_keys.APPROVE_PROVIDER),
+                AddressFormatter().format_address(approve_spender)
+            )
+                       
+        if max_fee:
+            DisplayItem(
+                self.group,
+                _(i18n_keys.LIST_KEY__MAXIMUM_FEE__COLON),
+                max_fee
+            )
+
+        if token_address:
+            DisplayItem(
+                self.group,
+                _(i18n_keys.TOKEN_ADDRESS),
+                AddressFormatter().format_address(token_address)
+            )
+
+        
+        # 添加底部间距
+        self.group.add_dummy()

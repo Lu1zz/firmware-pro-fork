@@ -74,6 +74,7 @@ __all__ = (
     "confirm_sign_typed_hash",
     "confirm_polkadot_balances",
     "should_show_details",
+    "should_show_approve_details",
     "show_ur_response",
     "enable_airgap_mode",
     "confirm_nostrmessage",
@@ -653,6 +654,41 @@ async def should_show_details(
     else:  # confirm
         return False
 
+async def should_show_approve_details(
+    ctx: wire.GenericContext,
+    approve_spender: str,
+    max_fee: str|None,
+    token_address: str,
+    provider_icon_path: str,
+    title: str,
+    br_code: ButtonRequestType = ButtonRequestType.ConfirmOutput,
+) -> bool:
+    from trezor.lvglui.scrs.template import ApproveErc20ETHOverview
+
+    res = await interact(
+        ctx,
+        ApproveErc20ETHOverview(
+            title,
+            approve_spender,
+            max_fee,
+            token_address,
+            primary_color=ctx.primary_color,
+            icon_path=provider_icon_path,
+            sub_icon_path=ctx.icon_path,
+            has_details=True,
+        ),
+        "approve_erc20_eth",
+        br_code,
+    )
+    if not res:
+        from trezor import loop
+
+        await loop.sleep(300)
+        raise wire.ActionCancelled()
+    elif res == 2:  # show more
+        return True
+    else:  # confirm
+        return False
 
 async def confirm_payment_request(
     ctx: wire.GenericContext,

@@ -157,9 +157,41 @@ async def require_confirm_eip1559_fee(
         raw_data=raw_data,
     )
 
+def require_show_erc20_approve_overview(
+    ctx: Context,
+    approve_spender: bytes,
+    value: int,
+    chain_id: int,
+    approve_token: tokens.EthereumTokenInfo | None = None,
+    is_nft: bool = False,
+    provider_name: str | None = None,
+    provider_icon: str | None = None,
+) -> Awaitable[bool]:
+    
+    str_amount = strip_amount(format_ethereum_amount(value, approve_token, chain_id, is_nft))[0]
+    title = _(i18n_keys.APPROVE_TOKEN_AMOUNT).format(
+        number=str_amount,
+        token="",
+        name=provider_name
+    )
+
+    approve_spender_str = address_from_bytes(approve_spender, networks.by_chain_id(chain_id))
+    approve_token_address_str = address_from_bytes(approve_token.address, networks.by_chain_id(chain_id))
+    from trezor.ui.layouts import should_show_approve_details
+    return should_show_approve_details(
+        ctx,
+        approve_spender=approve_spender_str,
+        # max_fee=format_ethereum_amount(value, approve_token, chain_id, is_nft),
+        max_fee=None,
+        token_address=approve_token_address_str,
+        provider_icon_path=provider_icon,
+        title=title,
+        br_code=ButtonRequestType.SignTx,
+    )
+
 async def require_confirm_eip1559_erc20_approve(
     ctx: Context,
-    spending: int,
+    approve_value: int,
     max_priority_fee: int,
     max_gas_fee: int,
     gas_limit: int,
@@ -171,26 +203,30 @@ async def require_confirm_eip1559_erc20_approve(
     token_id: int | None = None,
     evm_chain_id: int | None = None,
     raw_data: bytes | None = None,
+    provider_name: str | None = None,
+    provider_icon: str | None = None,
 ) -> None:
-    print(f"# require_confirm_eip1559_erc20_approve: {spending}")
+    print(f"# require_confirm_eip1559_erc20_approve: {approve_value}")
     fee_max = max_gas_fee * gas_limit
     await confirm_approve_erc20(
         ctx,
         format_ethereum_amount(
-            spending, token, chain_id, is_nft=True if token_id else False
+            approve_value, token, chain_id, is_nft=True if token_id else False
         ),
         format_ethereum_amount(max_priority_fee, None, chain_id),
         format_ethereum_amount(max_gas_fee, None, chain_id),
         format_ethereum_amount(fee_max, None, chain_id),
         from_address,
         to_address,
-        format_ethereum_amount(spending + fee_max, None, chain_id)
+        format_ethereum_amount(approve_value + fee_max, None, chain_id)
         if (token is None and contract_addr is None)
         else None,
         contract_addr,
         token_id,
         evm_chain_id=evm_chain_id,
         raw_data=raw_data,
+        provider_name=provider_name,
+        provider_icon=provider_icon,
     )
 
 def require_confirm_unknown_token(

@@ -72,12 +72,12 @@ async def sign_tx_eip1559(
     await paths.validate_path(ctx, keychain, msg.address_n, force_strict=False)
 
     # 1. 首先检查approve类型（与transfer互斥，需要提前判断）
-    approve_spender, approve_value = await handle_erc20_approve(ctx, msg)
+    approve_spender, approve_value, approve_token = await handle_erc20_approve(ctx, msg)
     print(f"# approve_spender: {approve_spender}")
     print(f"# approve_value: {approve_value}")
+    print(f"# approve_token: {approve_token.symbol if approve_token else 'None'}")
     if approve_spender is not None:
         is_approve = True
-        approve_token = tokens.token_by_chain_address(msg.chain_id, approve_spender)
     else:
         is_approve = False
     print(f"# is_approve: {is_approve}")
@@ -105,8 +105,9 @@ async def sign_tx_eip1559(
             is_nft_transfer = True
             from_addr, recipient, token_id, value = res
 
-    # 4. 判断是否启用turbomode
+    # 4. 根据不同模式处理UI逻辑
     if device.is_turbomode_enabled():
+        # Turbo 模式处理
         from trezor.lvglui.i18n import gettext as _, keys as i18n_keys
 
         if is_nft_transfer:
@@ -123,86 +124,101 @@ async def sign_tx_eip1559(
         from trezor.ui.layouts.lvgl import confirm_turbo
 
         await confirm_turbo(ctx, (_(i18n_keys.LIST_VALUE__SEND) + suffix), network.name)
-    else:
-        # 5. 非turbo模式的UI处理
-        if is_approve:
-            print("skip show_details")
-            # TODO: 实现approve专用的UI确认界面
-            # 这里先留出接口，使用现有的UI
-            # show_details = await require_show_overview(
-            #     ctx,
-            #     recipient,
-            #     value,
-            #     msg.chain_id,
-            #     token,
-            #     is_nft_transfer,
-            # )
-            show_details = True
-        else:
-            print("check show_details")
-            # 使用现有的UI逻辑
-            show_details = await require_show_overview(
-                ctx,
-                recipient,
-                value,
-                msg.chain_id,
-                token,
-                is_nft_transfer,
-            )
+    
+    elif is_approve:
+        # Approve 模式处理
+        print("approve mode processing")
+        
+        # TODO: 实现approve专用的UI确认界面
+        # 这里先留出接口，使用现有的UI
+        from .providers import provider_by_chain_address
+        provider = provider_by_chain_address(msg.chain_id, address_from_bytes(approve_spender,network))
 
+        from ..layout import require_show_erc20_approve_overview
+        show_details = await require_show_erc20_approve_overview(
+            ctx,
+            approve_spender,
+            approve_value,
+            msg.chain_id,
+            approve_token=approve_token if approve_token else None,
+            is_nft=False,
+            provider_name=provider.name,
+            provider_icon=provider.icon_path,
+        )
+        
         if show_details:
-            has_raw_data = False
-            if token is None and token_id is None and msg.data_length > 0 and not is_approve:
-                has_raw_data = True
-                # await require_confirm_data(ctx, msg.data_initial_chunk, data_total)
             node = keychain.derive(msg.address_n, force_strict=False)
-
             recipient_str = address_from_bytes(recipient, network)
             from_str = address_from_bytes(
                 from_addr or node.ethereum_pubkeyhash(), network
             )
             
-            if is_approve:
-                # TODO: 实现approve专用的费用确认界面
-                # 这里先使用现有的接口，后续可以创建approve专用的函数
-                await require_confirm_eip1559_erc20_approve(
-                    ctx,
-                    approve_value,
-                    int.from_bytes(msg.max_priority_fee, "big"),
-                    int.from_bytes(msg.max_gas_fee, "big"),
-                    int.from_bytes(msg.gas_limit, "big"),
-                    msg.chain_id,
-                    approve_token,
-                    from_address=from_str,
-                    to_address=address_from_bytes(approve_spender, network),  # 被授权地址
-                    contract_addr=msg.to,  # 代币合约地址
-                    token_id=None,
-                    evm_chain_id=None
-                    if network is not networks.UNKNOWN_NETWORK
-                    else msg.chain_id,
-                    raw_data=None,  # approve不需要显示raw data
-                )
-            else:
-                # 使用现有的费用确认逻辑
-                await require_confirm_eip1559_fee(
-                    ctx,
-                    value,
-                    int.from_bytes(msg.max_priority_fee, "big"),
-                    int.from_bytes(msg.max_gas_fee, "big"),
-                    int.from_bytes(msg.gas_limit, "big"),
-                    msg.chain_id,
-                    token,
-                    from_address=from_str,
-                    to_address=recipient_str,
-                    contract_addr=address_from_bytes(address_bytes, network)
-                    if token_id is not None
-                    else None,
-                    token_id=token_id,
-                    evm_chain_id=None
-                    if network is not networks.UNKNOWN_NETWORK
-                    else msg.chain_id,
-                    raw_data=msg.data_initial_chunk if has_raw_data else None,
-                )
+            await require_confirm_eip1559_erc20_approve(
+                ctx,
+                approve_value,
+                int.from_bytes(msg.max_priority_fee, "big"),
+                int.from_bytes(msg.max_gas_fee, "big"),
+                int.from_bytes(msg.gas_limit, "big"),
+                msg.chain_id,
+                approve_token if approve_token else None,
+                from_address=from_str,
+                to_address=address_from_bytes(approve_spender, network),  # 被授权地址
+                contract_addr=msg.to,  # 代币合约地址
+                token_id=None,
+                evm_chain_id=None
+                if network is not networks.UNKNOWN_NETWORK
+                else msg.chain_id,
+                raw_data=None,  # approve不需要显示raw data
+                provider_name=provider.name,
+                provider_icon=provider.icon_path,
+            )
+    
+    else:
+        # 普通交易模式处理
+        print("normal transaction processing")
+        
+        # 使用现有的UI逻辑判断是否显示详情
+        show_details = await require_show_overview(
+            ctx,
+            recipient,
+            value,
+            msg.chain_id,
+            token,
+            is_nft_transfer,
+        )
+
+        if show_details:
+            has_raw_data = False
+            if token is None and token_id is None and msg.data_length > 0:
+                has_raw_data = True
+                # await require_confirm_data(ctx, msg.data_initial_chunk, data_total)
+            
+            node = keychain.derive(msg.address_n, force_strict=False)
+            recipient_str = address_from_bytes(recipient, network)
+            from_str = address_from_bytes(
+                from_addr or node.ethereum_pubkeyhash(), network
+            )
+            
+            # 使用现有的费用确认逻辑
+            await require_confirm_eip1559_fee(
+                ctx,
+                value,
+                int.from_bytes(msg.max_priority_fee, "big"),
+                int.from_bytes(msg.max_gas_fee, "big"),
+                int.from_bytes(msg.gas_limit, "big"),
+                msg.chain_id,
+                token,
+                from_address=from_str,
+                to_address=recipient_str,
+                contract_addr=address_from_bytes(address_bytes, network)
+                if token_id is not None
+                else None,
+                token_id=token_id,
+                evm_chain_id=None
+                if network is not networks.UNKNOWN_NETWORK
+                else msg.chain_id,
+                raw_data=msg.data_initial_chunk if has_raw_data else None,
+            )
 
     data = bytearray()
     data += msg.data_initial_chunk
@@ -252,7 +268,7 @@ async def sign_tx_eip1559(
 
 async def handle_erc20_approve(
     ctx: wire.Context, msg: EthereumSignTxEIP1559
-) -> tuple[bytes, int] | tuple[None, None]:
+) -> tuple[bytes, int, tokens.EthereumTokenInfo] | tuple[None, None, None]:
     """
     解析ERC20 approve类型的交易数据
     
@@ -270,13 +286,15 @@ async def handle_erc20_approve(
         and msg.data_initial_chunk[:16]
         == b"\x09\x5e\xa7\xb3\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"  # approve(address,uint256)函数选择器 + padding
     ):
+        token_address = bytes_from_address(msg.to)
+
         # 解析approve参数
         approve_spender = msg.data_initial_chunk[16:36]  # 被授权地址 (bytes 16-35)
         approve_value = int.from_bytes(msg.data_initial_chunk[36:68], "big")  # 授权数量 (bytes 36-67)
-        
-        return approve_spender, approve_value
+        approve_token = tokens.token_by_chain_address(msg.chain_id, token_address)
+        return approve_spender, approve_value, approve_token
     
-    return None, None
+    return None, None, None
 
 
 def get_total_length(msg: EthereumSignTxEIP1559, data_total: int) -> int:

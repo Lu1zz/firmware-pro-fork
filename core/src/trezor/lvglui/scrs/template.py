@@ -727,7 +727,7 @@ class TransactionOverview(FullSizeWindow):
             )
 
 
-class ApproveErc20ETH(FullSizeWindow):
+class _ApproveErc20ETH(FullSizeWindow):
     def __init__(
         self,
         title,
@@ -5256,3 +5256,114 @@ class Turbo(FullSizeWindow):
             elif target == self.gif_mask:
                 motor.vibrate()
                 self._on_gif_click(event_obj)
+
+
+class ApproveErc20ETHOverview(FullSizeWindow):
+    def __init__(
+        self,
+        title,
+        approve_spender,
+        max_fee,
+        token_address,
+        primary_color=lv_colors.ONEKEY_GREEN,
+        icon_path="A:/res/icon-send.png",
+        sub_icon_path=None,
+        has_details=None,
+    ):
+        super().__init__(
+            title,
+            None,
+            _(i18n_keys.BUTTON__CONTINUE),
+            _(i18n_keys.BUTTON__REJECT),
+            primary_color=primary_color,
+            icon_path=icon_path,
+            sub_icon_path=sub_icon_path,
+        )
+        self.title.set_style_text_font(font_GeistSemiBold48, 0)
+        self.primary_color = primary_color
+        self.container = ContainerFlexCol(self.content_area, self.title, pos=(0, 40))
+        
+        from .components.signatureinfo import OverviewComponent
+
+        self.overview = OverviewComponent(
+            self.container,
+            approve_spender=approve_spender,
+            max_fee=max_fee,
+            token_address=token_address,
+        )
+
+        if has_details:
+            self.view_btn = NormalButton(
+                self.content_area,
+                f"{LV_SYMBOLS.LV_SYMBOL_ANGLE_DOUBLE_DOWN}  {_(i18n_keys.BUTTON__DETAILS)}",
+            )
+            self.view_btn.set_size(456, 82)
+            self.view_btn.add_style(StyleWrapper().text_font(font_GeistSemiBold26), 0)
+            self.view_btn.enable()
+            self.view_btn.align_to(self.overview.group, lv.ALIGN.OUT_BOTTOM_MID, 0, 8)
+            self.view_btn.add_event_cb(self.on_click, lv.EVENT.CLICKED, None)
+
+    def on_click(self, event_obj):
+        code = event_obj.code
+        target = event_obj.get_target()
+        if code == lv.EVENT.CLICKED:
+            if target == self.view_btn:
+                self.destroy(400)
+                self.channel.publish(2)
+
+class ApproveErc20ETH(FullSizeWindow):
+    def __init__(
+        self,
+        title,
+        address_from,
+        address_to,
+        amount,
+        fee_max,
+        is_eip1559=False,
+        gas_price=None,
+        max_priority_fee_per_gas=None,
+        max_fee_per_gas=None,
+        total_amount=None,
+        primary_color=lv_colors.ONEKEY_GREEN,
+        contract_addr:str|None=None,
+        token_id=None,
+        evm_chain_id=None,
+        raw_data=None,
+        icon_path="A:/res/icon-send.png",
+        sub_icon_path=None,
+        striped=False,
+    ):
+        super().__init__(
+            title,
+            None,
+            _(i18n_keys.BUTTON__CONTINUE),
+            _(i18n_keys.BUTTON__REJECT),
+            primary_color=primary_color,
+            icon_path=icon_path,
+            sub_icon_path=sub_icon_path,
+        )
+        self.title.set_style_text_font(font_GeistSemiBold48, 0)
+        print(f"# ApproveErc20ETH: {title}")
+        self.primary_color = primary_color
+        self.container = ContainerFlexCol(self.content_area, self.title, pos=(0, 40))
+        
+        from .components.signatureinfo import DirectionComponent, FeeComponent, MoreInfoComponent
+
+        self.direction = DirectionComponent(
+            self.container,
+            to_address=address_to,
+            from_address=address_from,
+        )
+
+        self.fee = FeeComponent(
+            self.container,
+            maximum_fee=fee_max,
+            priority_fee_per_gas=max_priority_fee_per_gas,
+            max_fee_per_gas=max_fee_per_gas,
+        )
+
+        self.more = MoreInfoComponent(
+            self.container,
+            contract_address=contract_addr,
+            chain_id=evm_chain_id,
+        )

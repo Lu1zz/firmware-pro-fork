@@ -57,13 +57,15 @@ async def confirm_approve_erc20(
     token_id: int | None,
     evm_chain_id: int | None,
     raw_data: bytes | None,
+    provider_name: str | None,
+    provider_icon: str | None,
 ) -> None:
     from trezor.lvglui.scrs.template import ApproveErc20ETH
     print(f"# confirm_approve_erc20: {amount}")
     short_amount, striped = strip_amount(amount)
     screen = ApproveErc20ETH(
-        "Approve 3.157624 DAI for OKX DEX",
-        #  _(i18n_keys.TITLE__SEND_MULTILINE).format(short_amount， spender_name),
+        # "Approve 3.157624 DAI for OKX DEX",
+         _(i18n_keys.APPROVE_TOKEN_AMOUNT).format(number=short_amount, token="", name=provider_name),
         from_address,
         to_address,
         amount,
@@ -77,6 +79,7 @@ async def confirm_approve_erc20(
         token_id=str(token_id),
         evm_chain_id=evm_chain_id,
         raw_data=raw_data,
+        icon_path=provider_icon,
         sub_icon_path=ctx.icon_path,
         striped=striped,
     )
